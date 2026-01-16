@@ -721,11 +721,20 @@ body {
     margin-bottom: 8px;
     background: white; /* Version_1: Background blanc */
     border-left: 4px solid #c4b5fd; /* Version_1: Border plus épaisse */
-    font-size: 14px; /* Version_1: Font légèrement plus grande */
+    font-size: 15px; /* Version_1: Font plus grande pour lisibilité */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Version_1: Police système moderne */
     color: #333;
     border-radius: 8px;
     transition: all 0.2s;
     box-shadow: 0 2px 4px rgba(124, 58, 237, 0.05);
+    line-height: 1.6; /* Version_1: Meilleure lisibilité */
+}
+
+.shopping-category li strong {
+    color: #7c3aed; /* Version_1: Quantité en violet */
+    font-weight: 600;
+    font-size: 16px; /* Version_1: Quantité un peu plus grande */
+    margin-right: 4px; /* Version_1: Petit espace après la quantité */
 }
 
 .shopping-category li:hover {

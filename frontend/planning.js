@@ -2672,8 +2672,10 @@ function displayRawShoppingList(ingredients) {
 
         byCategory[category].forEach(ing => {
             const quantity = Math.round(ing.quantity * 100) / 100; // 2 decimals
+            // VERSION_1: Formatage propre avec espaces
+            const unitStr = ing.unit ? ` ${ing.unit}` : ''; // Espace avant l'unité si elle existe
             html += `<li>`;
-            html += `${quantity}${ing.unit} ${ing.name}`; // VERSION_1: Format simplifié
+            html += `<strong>${quantity}${unitStr}</strong> ${ing.name}`; // Strong pour quantité + espaces
             html += `</li>`;
         });
 
