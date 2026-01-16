@@ -684,31 +684,31 @@ body {
 }
 
 .shopping-list h3 {
-    font-size: 16px; /* Version_1: Compact */
+    font-size: 14px; /* Version_1: Très compact */
     color: white; /* Version_1: Texte blanc */
     background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 100%); /* Version_1: Dégradé */
-    margin-bottom: 12px; /* Version_1: Réduit */
-    padding: 10px; /* Version_1: Réduit */
-    border-radius: 10px;
+    margin-bottom: 8px; /* Version_1: Très réduit */
+    padding: 8px; /* Version_1: Très réduit */
+    border-radius: 8px;
     font-weight: 700;
     text-align: center;
     box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
 }
 
 .shopping-category {
-    margin-bottom: 15px; /* Version_1: Réduit */
+    margin-bottom: 10px; /* Version_1: Très réduit */
 }
 
 .shopping-category h4 {
-    font-size: 14px; /* Version_1: Compact */
+    font-size: 12px; /* Version_1: Très compact - titres catégories */
     color: #7c3aed;
     background: linear-gradient(to right, #f3e8ff 0%, #faf5ff 100%); /* Version_1: Dégradé horizontal */
-    padding: 8px 12px; /* Version_1: Réduit */
-    border-radius: 8px;
-    margin-bottom: 8px; /* Version_1: Réduit */
+    padding: 5px 8px; /* Version_1: Très réduit */
+    border-radius: 6px;
+    margin-bottom: 5px; /* Version_1: Très réduit */
     font-weight: 700;
-    border: 2px solid #e9d5ff;
-    box-shadow: 0 2px 6px rgba(124, 58, 237, 0.08);
+    border: 1px solid #e9d5ff; /* Version_1: Border plus fine */
+    box-shadow: 0 1px 3px rgba(124, 58, 237, 0.08);
 }
 
 .shopping-category ul {
