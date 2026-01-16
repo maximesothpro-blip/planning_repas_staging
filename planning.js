@@ -2637,10 +2637,28 @@ async function addIngredientsToShoppingList(recipe, servings) {
 function displayRawShoppingList(ingredients) {
     const shoppingContent = document.getElementById('shoppingContent');
 
+    // VERSION_1 TEST: Liste d'exemple statique
+    ingredients = [
+        { name: "Tomates", quantity: 4, unit: "", category: "Fruits & Légumes" },
+        { name: "Oignons", quantity: 2, unit: "", category: "Fruits & Légumes" },
+        { name: "Carottes", quantity: 500, unit: "g", category: "Fruits & Légumes" },
+        { name: "Poulet", quantity: 800, unit: "g", category: "Viandes & Poissons" },
+        { name: "Saumon", quantity: 400, unit: "g", category: "Viandes & Poissons" },
+        { name: "Pâtes", quantity: 500, unit: "g", category: "Épicerie" },
+        { name: "Riz", quantity: 300, unit: "g", category: "Épicerie" },
+        { name: "Huile d'olive", quantity: 1, unit: "bouteille", category: "Épicerie" },
+        { name: "Lait", quantity: 1, unit: "L", category: "Produits laitiers" },
+        { name: "Fromage râpé", quantity: 200, unit: "g", category: "Produits laitiers" }
+    ];
+
+    console.log('VERSION_1 TEST: displayRawShoppingList with example data');
+
+    /* CODE ORIGINAL COMMENTÉ
     if (!ingredients || ingredients.length === 0) {
         shoppingContent.innerHTML = '<p class="empty-shopping">Aucun ingrédient dans la liste</p>';
         return;
     }
+    */
 
     // Group by category
     const byCategory = {};
@@ -2655,13 +2673,14 @@ function displayRawShoppingList(ingredients) {
     // Sort categories alphabetically
     const sortedCategories = Object.keys(byCategory).sort();
 
-    // Build HTML
-    let html = '<div class="shopping-list-organized">';
+    // VERSION_1: Utiliser les bonnes classes CSS
+    let html = '<div class="shopping-list">';
+    html += '<h3>Liste de Test - Design V1</h3>';
 
     sortedCategories.forEach(category => {
-        html += `<div class="ingredient-category">`;
+        html += `<div class="shopping-category">`; // VERSION_1: Bonne classe
         html += `<h4>${category}</h4>`;
-        html += `<ul class="ingredients-list">`;
+        html += `<ul>`; // VERSION_1: Sans classe spécifique
 
         // Sort ingredients by name within category
         byCategory[category].sort((a, b) => a.name.localeCompare(b.name));
@@ -2669,8 +2688,7 @@ function displayRawShoppingList(ingredients) {
         byCategory[category].forEach(ing => {
             const quantity = Math.round(ing.quantity * 100) / 100; // 2 decimals
             html += `<li>`;
-            html += `<span class="ingredient-quantity">${quantity}${ing.unit}</span> `;
-            html += `<span class="ingredient-name">${ing.name}</span>`;
+            html += `${quantity}${ing.unit} ${ing.name}`; // VERSION_1: Format simplifié
             html += `</li>`;
         });
 
@@ -2680,6 +2698,7 @@ function displayRawShoppingList(ingredients) {
     html += '</div>';
 
     shoppingContent.innerHTML = html;
+    console.log('VERSION_1 TEST: Shopping list displayed with new classes');
 }
 
 // Update shopping list when servings change (+/- buttons)
