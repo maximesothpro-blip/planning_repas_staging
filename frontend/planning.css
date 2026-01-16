@@ -172,11 +172,13 @@ body {
     grid-area: planning;
     padding: 20px;
     overflow-y: auto;
-    max-height: 80vh; /* Fixed height: 1 - 1/5 sidebar = 80% */
+    height: 30vh; /* Version_1: Taille fixe = 1,5× sidebar (20vh × 1,5) */
+    max-height: 30vh;
 }
 
 .sidebar.collapsed ~ .planning {
-    max-height: 100vh; /* Full height when sidebar is collapsed */
+    height: 50vh; /* Version_1: Plus d'espace quand sidebar cachée */
+    max-height: 50vh;
 }
 
 .planning-header {
@@ -319,10 +321,11 @@ body {
 
 .meal-slot {
     padding: 15px;
-    min-height: 100px;
+    height: 100px; /* Version_1: Hauteur fixe au lieu de min-height */
     border-bottom: 1px solid #f3e8ff;
     background: #fefbff;
     position: relative;
+    overflow: hidden; /* Version_1: Couper le texte qui dépasse */
 }
 
 .meal-slot:last-child {
