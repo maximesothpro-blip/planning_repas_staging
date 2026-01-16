@@ -24,8 +24,8 @@ body {
 /* ===== SIDEBAR RECETTES (EN BAS - 1/5 de l'écran) ===== */
 .sidebar {
     grid-area: recipes;
-    height: 20vh;
-    min-height: 20vh;
+    height: 25vh;
+    min-height: 25vh;
     background: #ffffff;
     border-top: 2px solid #e9d5ff;
     display: flex;
