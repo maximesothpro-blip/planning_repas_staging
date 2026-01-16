@@ -842,56 +842,78 @@ body {
 }
 
 .popup-content {
-    background: white;
-    padding: 30px;
-    border-radius: 16px;
+    background: linear-gradient(to bottom, #fefbff 0%, #ffffff 100%); /* Version_1: Dégradé subtil */
+    padding: 40px;
+    border-radius: 20px;
     max-width: 1080px; /* Version_1: Agrandie de 20% (900px -> 1080px) */
     max-height: 85vh;
     overflow-y: auto;
     position: relative;
-    box-shadow: 0 10px 40px rgba(124, 58, 237, 0.2);
-    border: 2px solid #e9d5ff;
+    box-shadow: 0 20px 60px rgba(124, 58, 237, 0.15);
+    border: 3px solid #e9d5ff;
 }
 
 .close-popup {
     position: absolute;
-    top: 10px;
+    top: 15px;
     right: 15px;
-    background: none;
+    background: #f3e8ff; /* Version_1: Background pastel */
     border: none;
-    font-size: 30px;
+    font-size: 24px;
     cursor: pointer;
-    color: #999;
+    color: #7c3aed;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
 }
 
 .close-popup:hover {
-    color: #333;
+    background: #e9d5ff;
+    transform: scale(1.1);
 }
 
 #popupTitle {
-    margin-bottom: 20px;
-    color: #7c3aed;
+    margin-bottom: 30px;
+    color: white;
+    background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 100%); /* Version_1: Dégradé comme les headers */
+    padding: 20px;
+    border-radius: 12px;
+    font-size: 28px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
 }
 
 #popupBody {
-    line-height: 1.6;
+    line-height: 1.8;
+    color: #333;
 }
 
 .popup-section {
-    margin-bottom: 15px;
+    margin-bottom: 25px;
+    background: #faf5ff; /* Version_1: Background pastel subtil */
+    padding: 20px;
+    border-radius: 12px;
+    border: 2px solid #f3e8ff;
 }
 
 .popup-section strong {
     display: block;
-    margin-bottom: 5px;
-    color: #333;
+    margin-bottom: 12px;
+    color: #7c3aed;
+    font-size: 18px;
+    font-weight: 700;
 }
 
 /* ===== POPUP 2 COLONNES (v3.6) ===== */
 .popup-two-columns {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 30px;
+    gap: 40px;
+    margin-top: 20px;
 }
 
 .popup-left-column,
@@ -899,8 +921,12 @@ body {
     min-width: 0; /* Prevent overflow */
 }
 
+.popup-left-column {
+    /* Version_1: Style pour la colonne gauche */
+}
+
 .popup-right-column {
-    border-left: 2px solid #e9d5ff;
+    border-left: 3px solid #e9d5ff;
     padding-left: 30px;
 }
 
@@ -911,15 +937,31 @@ body {
 }
 
 .recipe-steps li {
-    margin-bottom: 15px;
-    padding-left: 0;
-    line-height: 1.6;
+    margin-bottom: 20px;
+    padding: 15px;
+    padding-left: 50px; /* Version_1: Espace pour le numéro */
+    line-height: 1.8;
+    background: white; /* Version_1: Background blanc */
+    border-radius: 8px;
+    border: 2px solid #f3e8ff;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(124, 58, 237, 0.05);
 }
 
 .recipe-steps li strong {
-    display: inline;
-    color: #7c3aed;
-    margin-right: 8px;
+    position: absolute; /* Version_1: Numéro positionné en absolu */
+    left: 15px;
+    top: 15px;
+    display: inline-block;
+    background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 100%);
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
 }
 
 /* Popup Servings Control */
