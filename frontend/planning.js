@@ -1212,6 +1212,22 @@ async function createEmptyShoppingList(week, year) {
 // Display shopping list from Airtable (not from cache)
 async function displayShoppingListFromAirtable() {
     try {
+        // VERSION_1 TEST: Liste d'exemple statique pour tester les styles
+        const ingredients = [
+            { name: "Tomates", quantity: 4, unit: "", category: "Fruits & Légumes" },
+            { name: "Oignons", quantity: 2, unit: "", category: "Fruits & Légumes" },
+            { name: "Carottes", quantity: 500, unit: "g", category: "Fruits & Légumes" },
+            { name: "Poulet", quantity: 800, unit: "g", category: "Viandes & Poissons" },
+            { name: "Saumon", quantity: 400, unit: "g", category: "Viandes & Poissons" },
+            { name: "Pâtes", quantity: 500, unit: "g", category: "Épicerie" },
+            { name: "Riz", quantity: 300, unit: "g", category: "Épicerie" },
+            { name: "Huile d'olive", quantity: 1, unit: "bouteille", category: "Épicerie" },
+            { name: "Lait", quantity: 1, unit: "L", category: "Produits laitiers" },
+            { name: "Fromage râpé", quantity: 200, unit: "g", category: "Produits laitiers" }
+        ];
+
+        // CODE ORIGINAL COMMENTÉ
+        /*
         if (!currentShoppingListId) {
             shoppingContent.innerHTML = '<p class="empty-shopping">Aucune liste de courses disponible.</p>';
             return;
@@ -1229,13 +1245,20 @@ async function displayShoppingListFromAirtable() {
 
         // Parse ingredients JSON
         const ingredients = JSON.parse(list.ingredientsJSON || '[]');
+        */
 
-        console.log('Displaying shopping list from Airtable:', ingredients.length, 'items');
+        console.log('VERSION_1 TEST: Displaying example shopping list:', ingredients.length, 'items');
 
+        // VERSION_1 TEST: Nom de liste statique
+        const listName = "Liste de Test - Design V1";
+
+        // CODE ORIGINAL COMMENTÉ
+        /*
         if (ingredients.length === 0) {
             shoppingContent.innerHTML = '<p class="empty-shopping">Aucun repas planifié pour cette semaine.</p>';
             return;
         }
+        */
 
         // Group by category
         const byCategory = {};
@@ -1246,8 +1269,11 @@ async function displayShoppingListFromAirtable() {
             byCategory[item.category].push(item);
         });
 
+        // CODE ORIGINAL COMMENTÉ
+        /*
         // v3.3.2: Display list name from Airtable (includes "- Modifié" if modified)
         const listName = list.nom || `Liste semaine ${currentWeek} - ${currentYear}`;
+        */
 
         // Generate HTML with categories
         let html = '<div class="shopping-list">';
