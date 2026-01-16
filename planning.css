@@ -668,7 +668,7 @@ body {
 .shopping-content {
     flex: 1;
     overflow-y: auto;
-    padding: 20px; /* Version_1: Plus de padding */
+    padding: 12px; /* Version_1: Compact */
     background: #fefbff; /* Version_1: Background subtil */
 }
 
@@ -684,28 +684,28 @@ body {
 }
 
 .shopping-list h3 {
-    font-size: 18px; /* Version_1: Plus grand */
+    font-size: 16px; /* Version_1: Compact */
     color: white; /* Version_1: Texte blanc */
     background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 100%); /* Version_1: Dégradé */
-    margin-bottom: 20px;
-    padding: 15px;
-    border-radius: 12px;
+    margin-bottom: 12px; /* Version_1: Réduit */
+    padding: 10px; /* Version_1: Réduit */
+    border-radius: 10px;
     font-weight: 700;
     text-align: center;
     box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
 }
 
 .shopping-category {
-    margin-bottom: 25px;
+    margin-bottom: 15px; /* Version_1: Réduit */
 }
 
 .shopping-category h4 {
-    font-size: 15px; /* Version_1: Légèrement plus grand */
+    font-size: 14px; /* Version_1: Compact */
     color: #7c3aed;
     background: linear-gradient(to right, #f3e8ff 0%, #faf5ff 100%); /* Version_1: Dégradé horizontal */
-    padding: 12px 15px;
-    border-radius: 10px;
-    margin-bottom: 12px;
+    padding: 8px 12px; /* Version_1: Réduit */
+    border-radius: 8px;
+    margin-bottom: 8px; /* Version_1: Réduit */
     font-weight: 700;
     border: 2px solid #e9d5ff;
     box-shadow: 0 2px 6px rgba(124, 58, 237, 0.08);
@@ -717,23 +717,23 @@ body {
 }
 
 .shopping-category li {
-    padding: 12px 15px;
-    margin-bottom: 8px;
+    padding: 8px 12px; /* Version_1: Compact */
+    margin-bottom: 5px; /* Version_1: Compact */
     background: white; /* Version_1: Background blanc */
     border-left: 4px solid #c4b5fd; /* Version_1: Border plus épaisse */
-    font-size: 15px; /* Version_1: Font plus grande pour lisibilité */
+    font-size: 14px; /* Version_1: Compact */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; /* Version_1: Police système moderne */
     color: #333;
-    border-radius: 8px;
+    border-radius: 6px;
     transition: all 0.2s;
     box-shadow: 0 2px 4px rgba(124, 58, 237, 0.05);
-    line-height: 1.6; /* Version_1: Meilleure lisibilité */
+    line-height: 1.4; /* Version_1: Compact */
 }
 
 .shopping-category li strong {
     color: #7c3aed; /* Version_1: Quantité en violet */
     font-weight: 600;
-    font-size: 16px; /* Version_1: Quantité un peu plus grande */
+    font-size: 14px; /* Version_1: Compact */
     margin-right: 4px; /* Version_1: Petit espace après la quantité */
 }
 
