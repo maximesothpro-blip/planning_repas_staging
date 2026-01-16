@@ -172,13 +172,13 @@ body {
     grid-area: planning;
     padding: 20px;
     overflow-y: auto;
-    height: 30vh; /* Version_1: Taille fixe = 1,5× sidebar (20vh × 1,5) */
-    max-height: 30vh;
+    height: 70vh; /* Version_1: S'arrête à 1,5× sidebar du bas (100vh - 30vh) */
+    max-height: 70vh;
 }
 
 .sidebar.collapsed ~ .planning {
-    height: 50vh; /* Version_1: Plus d'espace quand sidebar cachée */
-    max-height: 50vh;
+    height: 95vh; /* Version_1: Presque tout l'écran quand sidebar cachée */
+    max-height: 95vh;
 }
 
 .planning-header {
