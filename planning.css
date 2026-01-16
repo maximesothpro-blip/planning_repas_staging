@@ -24,8 +24,8 @@ body {
 /* ===== SIDEBAR RECETTES (EN BAS - 1/5 de l'écran) ===== */
 .sidebar {
     grid-area: recipes;
-    height: 25vh;
-    min-height: 25vh;
+    height: 22vh;
+    min-height: 22vh;
     background: #ffffff;
     border-top: 2px solid #e9d5ff;
     display: flex;
@@ -172,8 +172,8 @@ body {
     grid-area: planning;
     padding: 20px;
     overflow-y: auto;
-    height: 70vh; /* Version_1: S'arrête à 1,5× sidebar du bas (100vh - 30vh) */
-    max-height: 70vh;
+    height: 90vh; /* Modifié par max */
+    max-height: 90vh;
 }
 
 .sidebar.collapsed ~ .planning {
