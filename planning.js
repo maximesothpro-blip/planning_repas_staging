@@ -2637,28 +2637,13 @@ async function addIngredientsToShoppingList(recipe, servings) {
 function displayRawShoppingList(ingredients) {
     const shoppingContent = document.getElementById('shoppingContent');
 
-    // VERSION_1 TEST: Liste d'exemple statique
-    ingredients = [
-        { name: "Tomates", quantity: 4, unit: "", category: "Fruits & Légumes" },
-        { name: "Oignons", quantity: 2, unit: "", category: "Fruits & Légumes" },
-        { name: "Carottes", quantity: 500, unit: "g", category: "Fruits & Légumes" },
-        { name: "Poulet", quantity: 800, unit: "g", category: "Viandes & Poissons" },
-        { name: "Saumon", quantity: 400, unit: "g", category: "Viandes & Poissons" },
-        { name: "Pâtes", quantity: 500, unit: "g", category: "Épicerie" },
-        { name: "Riz", quantity: 300, unit: "g", category: "Épicerie" },
-        { name: "Huile d'olive", quantity: 1, unit: "bouteille", category: "Épicerie" },
-        { name: "Lait", quantity: 1, unit: "L", category: "Produits laitiers" },
-        { name: "Fromage râpé", quantity: 200, unit: "g", category: "Produits laitiers" }
-    ];
-
-    console.log('VERSION_1 TEST: displayRawShoppingList with example data');
-
-    /* CODE ORIGINAL COMMENTÉ
+    // VERSION_1: Code Airtable réactivé avec bonnes classes CSS
     if (!ingredients || ingredients.length === 0) {
         shoppingContent.innerHTML = '<p class="empty-shopping">Aucun ingrédient dans la liste</p>';
         return;
     }
-    */
+
+    console.log('VERSION_1: displayRawShoppingList with Airtable data:', ingredients.length, 'items');
 
     // Group by category
     const byCategory = {};
@@ -2675,7 +2660,7 @@ function displayRawShoppingList(ingredients) {
 
     // VERSION_1: Utiliser les bonnes classes CSS
     let html = '<div class="shopping-list">';
-    html += '<h3>Liste de Test - Design V1</h3>';
+    html += `<h3>Liste semaine ${currentWeek} - ${currentYear}</h3>`; // VERSION_1: Titre dynamique
 
     sortedCategories.forEach(category => {
         html += `<div class="shopping-category">`; // VERSION_1: Bonne classe
