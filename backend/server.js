@@ -93,9 +93,9 @@ app.post('/api/create-recipe', async (req, res) => {
   try {
     const { title, description, ingredients, recipe } = req.body;
 
-    if (!title || !ingredients || !recipe) {
+    if (!title) {
       return res.status(400).json({
-        error: 'Title, ingredients and recipe are required'
+        error: 'Title is required'
       });
     }
 
