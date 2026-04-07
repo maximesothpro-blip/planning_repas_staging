@@ -224,6 +224,39 @@
         </div>
     </div>
 
+    <!-- Boutons flottants mobile -->
+    <div class="mobile-fabs">
+        <button class="mobile-fab mobile-fab-create" id="mobileFabCreate">✏️</button>
+        <button class="mobile-fab mobile-fab-shopping" id="mobileFabShopping">🛒</button>
+    </div>
+
+    <!-- Popup liste de courses mobile (bottom sheet) -->
+    <div class="mobile-shopping-popup" id="mobileShoppingPopup">
+        <div class="mobile-shopping-sheet">
+            <div class="mobile-shopping-handle"></div>
+            <div class="mobile-shopping-header">
+                <h3>🛒 Liste de courses</h3>
+                <button class="recipe-picker-close" id="closeMobileShoppingPopup">×</button>
+            </div>
+            <div class="mobile-shopping-body" id="mobileShoppingBody">
+                <p style="text-align:center;color:#999;padding:30px 0;">Aucun ingrédient dans la liste</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup sélection recette mobile (bottom sheet) -->
+    <div class="recipe-picker-popup" id="recipePickerPopup">
+        <div class="recipe-picker-sheet">
+            <div class="recipe-picker-handle"></div>
+            <div class="recipe-picker-header">
+                <h3>Choisir une recette</h3>
+                <button class="recipe-picker-close" id="closeRecipePickerPopup">×</button>
+            </div>
+            <input type="text" class="recipe-picker-search" id="recipePickerSearch" placeholder="Rechercher une recette...">
+            <div class="recipe-picker-list" id="recipePickerList"></div>
+        </div>
+    </div>
+
     <!-- Notification popup -->
     <div class="notification-popup" id="notificationPopup">
         <div class="notification-content">
@@ -233,9 +266,129 @@
     </div>
 
     <!-- Version -->
-    <div class="version-info">Staging v1.3 - Responsive mobile - 07/04/2026</div>
+    <div class="version-info">Staging v1.4 - Mobile redesign - 07/04/2026</div>
 
     <script src="config.js"></script>
     <script src="planning.js"></script>
+    <script>
+    // ===== MOBILE LOGIC =====
+    const isMobile = () => window.innerWidth <= 768;
+
+    // --- FAB Créer recette ---
+    document.getElementById('mobileFabCreate').addEventListener('click', () => {
+        document.getElementById('createRecipePopup').classList.add('active');
+    });
+
+    // --- FAB Liste de courses ---
+    document.getElementById('mobileFabShopping').addEventListener('click', () => {
+        // Copier le contenu de shoppingContent dans la popup mobile
+        const src = document.getElementById('shoppingContent').innerHTML;
+        document.getElementById('mobileShoppingBody').innerHTML = src || '<p style="text-align:center;color:#999;padding:30px 0;">Aucun ingrédient dans la liste</p>';
+        document.getElementById('mobileShoppingPopup').classList.add('active');
+    });
+
+    document.getElementById('closeMobileShoppingPopup').addEventListener('click', () => {
+        document.getElementById('mobileShoppingPopup').classList.remove('active');
+    });
+
+    document.getElementById('mobileShoppingPopup').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('mobileShoppingPopup'))
+            document.getElementById('mobileShoppingPopup').classList.remove('active');
+    });
+
+    // --- Picker recettes ---
+    let _pickerSlot = null;
+
+    function openRecipePicker(slot) {
+        _pickerSlot = slot;
+        renderRecipePicker('');
+        document.getElementById('recipePickerSearch').value = '';
+        document.getElementById('recipePickerPopup').classList.add('active');
+        document.getElementById('recipePickerSearch').focus();
+    }
+
+    function renderRecipePicker(query) {
+        const list = document.getElementById('recipePickerList');
+        const filtered = (window.recipes || []).filter(r =>
+            r.name.toLowerCase().includes(query.toLowerCase())
+        );
+        list.innerHTML = filtered.map(r => `
+            <div class="recipe-picker-item" data-id="${r.id}" data-name="${r.name}">
+                <div class="recipe-picker-item-name">${r.name}</div>
+                <div class="recipe-picker-item-tags">${(r.tags || []).join(', ')}</div>
+            </div>
+        `).join('');
+
+        list.querySelectorAll('.recipe-picker-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const recipeId = el.dataset.id;
+                const recipeName = el.dataset.name;
+                document.getElementById('recipePickerPopup').classList.remove('active');
+                if (_pickerSlot) simulateDrop(_pickerSlot, recipeId, recipeName);
+            });
+        });
+    }
+
+    document.getElementById('recipePickerSearch').addEventListener('input', (e) => {
+        renderRecipePicker(e.target.value);
+    });
+
+    document.getElementById('closeRecipePickerPopup').addEventListener('click', () => {
+        document.getElementById('recipePickerPopup').classList.remove('active');
+    });
+
+    // Simuler un drop depuis le picker
+    async function simulateDrop(slot, recipeId, recipeName) {
+        const day = slot.dataset.day;
+        const meal = slot.dataset.meal;
+        const mealContent = slot.querySelector('.meal-content');
+
+        mealContent.innerHTML = `<div class="planned-recipe"><span class="recipe-name-text">${recipeName}</span></div>`;
+
+        try {
+            const date = getDateForDay(day);
+            const response = await fetch(`${API_URL}/api/planning`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    day, date, meal: meal,
+                    recipeId, week: currentWeek, year: currentYear,
+                    servings: defaultServings
+                })
+            });
+            const data = await response.json();
+            if (data.success && data.record) {
+                const recordId = data.record.id;
+                mealContent.innerHTML = `
+                    <div class="planned-recipe" data-record-id="${recordId}" data-recipe-id="${recipeId}">
+                        <span class="recipe-name-text">${recipeName} <span class="servings-indicator">👤 × ${defaultServings}</span></span>
+                        <button class="delete-recipe-btn" data-record-id="${recordId}">×</button>
+                    </div>`;
+                const deleteBtn = mealContent.querySelector('.delete-recipe-btn');
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteRecipeFromPlanning(recordId, slot);
+                });
+                const plannedDiv = mealContent.querySelector('.planned-recipe');
+                plannedDiv.addEventListener('click', () => {
+                    const recipe = (window.recipes || []).find(r => r.id === recipeId);
+                    if (recipe) showRecipePopup(recipe, { id: recordId, servings: defaultServings });
+                });
+            }
+        } catch(err) {
+            console.error('Erreur ajout recette mobile:', err);
+        }
+    }
+
+    // --- Tap sur slot vide → ouvrir picker (mobile uniquement) ---
+    document.getElementById('calendar').addEventListener('click', (e) => {
+        if (!isMobile()) return;
+        const slot = e.target.closest('.meal-slot');
+        if (!slot) return;
+        // Si le slot contient déjà une recette, laisser le click normal gérer
+        if (slot.querySelector('.planned-recipe')) return;
+        openRecipePicker(slot);
+    });
+    </script>
 </body>
 </html>
