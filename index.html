@@ -266,7 +266,7 @@
     </div>
 
     <!-- Version -->
-    <div class="version-info">Staging v1.5 - Mobile polish - 07/04/2026</div>
+    <div class="version-info">Staging v1.6 - Fix picker recettes - 08/04/2026</div>
 
     <script src="config.js"></script>
     <script src="planning.js"></script>
@@ -308,7 +308,7 @@
 
     function renderRecipePicker(query) {
         const list = document.getElementById('recipePickerList');
-        const filtered = (window.recipes || []).filter(r =>
+        const filtered = (typeof recipes !== 'undefined' ? recipes : []).filter(r =>
             r.name.toLowerCase().includes(query.toLowerCase())
         );
         list.innerHTML = filtered.map(r => `

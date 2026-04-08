@@ -1971,6 +1971,18 @@ body {
         margin-bottom: 5px;
     }
 
+    /* Remplacer "Glissez une recette ici" par "Appuyer pour ajouter" sur mobile */
+    .empty-slot {
+        font-size: 0;
+    }
+
+    .empty-slot::after {
+        content: '+ Appuyer pour ajouter';
+        font-size: 11px;
+        color: #c4b5fd;
+        font-style: italic;
+    }
+
     .planned-recipe {
         font-size: 12px;
         padding: 6px 8px;
