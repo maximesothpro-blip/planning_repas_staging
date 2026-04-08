@@ -252,8 +252,8 @@
                 <h3>Choisir une recette</h3>
                 <button class="recipe-picker-close" id="closeRecipePickerPopup">×</button>
             </div>
-            <input type="text" class="recipe-picker-search" id="recipePickerSearch" placeholder="Rechercher une recette...">
             <div class="recipe-picker-list" id="recipePickerList"></div>
+            <input type="text" class="recipe-picker-search" id="recipePickerSearch" placeholder="🔍 Rechercher..." inputmode="search">
         </div>
     </div>
 
@@ -266,7 +266,7 @@
     </div>
 
     <!-- Version -->
-    <div class="version-info">Staging v1.4 - Mobile redesign - 07/04/2026</div>
+    <div class="version-info">Staging v1.5 - Mobile polish - 07/04/2026</div>
 
     <script src="config.js"></script>
     <script src="planning.js"></script>
@@ -304,7 +304,6 @@
         renderRecipePicker('');
         document.getElementById('recipePickerSearch').value = '';
         document.getElementById('recipePickerPopup').classList.add('active');
-        document.getElementById('recipePickerSearch').focus();
     }
 
     function renderRecipePicker(query) {
