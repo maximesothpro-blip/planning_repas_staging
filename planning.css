@@ -1974,11 +1974,14 @@ body {
     /* Remplacer "Glissez une recette ici" par "Appuyer pour ajouter" sur mobile */
     .empty-slot {
         font-size: 0;
+        line-height: 0;
     }
 
     .empty-slot::after {
         content: '+ Appuyer pour ajouter';
+        display: block;
         font-size: 11px;
+        line-height: normal;
         color: #c4b5fd;
         font-style: italic;
     }
@@ -2271,12 +2274,21 @@ body {
     .modify-recipe-form input[type="text"],
     .modify-recipe-form textarea {
         padding: 7px 10px;
-        font-size: 13px;
+        font-size: 16px; /* 16px minimum pour éviter le zoom iOS au focus */
     }
 
     .create-recipe-form textarea,
     .modify-recipe-form textarea {
-        min-height: 50px;
+        min-height: 44px;
+        max-height: 70px;
+    }
+
+    /* Ingrédients et Recette : un peu plus hauts mais pas trop */
+    #recipeIngredients,
+    #recipeSteps,
+    #modifyIngredients,
+    #modifySteps {
+        max-height: 80px;
     }
 
     .create-recipe-submit-btn,
