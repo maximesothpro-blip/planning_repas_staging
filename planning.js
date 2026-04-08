@@ -88,6 +88,7 @@ async function init() {
     // initializeMealInclusions();
     // v3.9: Load shopping list on startup
     await loadShoppingListOnStartup();
+    initShoppingEventDelegation();
     setupEventListeners();
 }
 
@@ -2522,6 +2523,7 @@ historyPopup.addEventListener('click', (e) => {
 // Simple shopping list: add ingredients to Airtable, sum if exists, display raw JSON
 
 let currentListId = null; // ID of the current week's shopping list in Airtable
+let currentShoppingIngredients = []; // Global pour event delegation (buttons mobiles)
 
 // Get or create shopping list for current week
 async function getOrCreateShoppingList(week, year) {
@@ -2654,27 +2656,16 @@ function getQuantityStep(unit) {
     return 1;
 }
 
-// Display raw JSON in shopping tab
+// Display raw JSON in shopping tab (render only — interactions handled by initShoppingEventDelegation)
 function displayRawShoppingList(ingredientsInput) {
-    const shoppingContent = document.getElementById('shoppingContent');
-
-    if (!ingredientsInput || ingredientsInput.length === 0) {
-        shoppingContent.innerHTML = '<p class="empty-shopping">Aucun ingrédient dans la liste</p>';
-        return;
-    }
-
-    // Deep copy + initialiser section si manquante
-    const ingredients = ingredientsInput.map(ing => ({
-        ...ing,
-        section: ing.section || (ing.category === 'Épicerie' ? 'stock' : 'main')
-    }));
-    // Sync section vers le tableau source
-    ingredients.forEach((ing, i) => {
-        if (ingredientsInput[i]) ingredientsInput[i].section = ing.section;
+    // Initialiser section si manquante + stocker en global pour la délégation
+    ingredientsInput.forEach(ing => {
+        if (!ing.section) ing.section = (ing.category === 'Épicerie') ? 'stock' : 'main';
     });
+    currentShoppingIngredients = ingredientsInput;
 
-    const mainItems = ingredients.filter(ing => ing.section !== 'stock');
-    const stockItems = ingredients.filter(ing => ing.section === 'stock');
+    const mainItems = ingredientsInput.filter(ing => ing.section !== 'stock');
+    const stockItems = ingredientsInput.filter(ing => ing.section === 'stock');
 
     function groupByCategory(items) {
         const byCategory = {};
@@ -2717,7 +2708,7 @@ function displayRawShoppingList(ingredientsInput) {
     Object.keys(mainByCategory).sort().forEach(cat => {
         const items = [...mainByCategory[cat]].sort((a, b) => a.name.localeCompare(b.name));
         mainHtml += `<div class="shopping-category"><h4>${cat}</h4><ul>`;
-        items.forEach(ing => mainHtml += renderMainItem(ing, ingredients.indexOf(ing)));
+        items.forEach(ing => mainHtml += renderMainItem(ing, ingredientsInput.indexOf(ing)));
         mainHtml += '</ul></div>';
     });
 
@@ -2727,25 +2718,49 @@ function displayRawShoppingList(ingredientsInput) {
         stockHtml = `<div class="shopping-a-verifier">
             <div class="a-verifier-header">⚠️ À vérifier / En stock</div>
             <ul>`;
-        sortedStock.forEach(ing => stockHtml += renderStockItem(ing, ingredients.indexOf(ing)));
+        sortedStock.forEach(ing => stockHtml += renderStockItem(ing, ingredientsInput.indexOf(ing)));
         stockHtml += '</ul></div>';
     }
 
-    shoppingContent.innerHTML = `
+    const html = `
         <div class="shopping-list-header">
             <h3>${dateRange}</h3>
-            <button class="shopping-copy-btn" id="shoppingCopyBtn" title="Copier la liste">📋</button>
+            <button class="shopping-copy-btn" title="Copier la liste">📋</button>
         </div>
         <div class="shopping-list">${mainHtml}</div>
         ${stockHtml}
     `;
 
-    // === COPIER ===
-    function buildCopyText() {
+    const shoppingContent = document.getElementById('shoppingContent');
+    shoppingContent.innerHTML = html;
+
+    // Sync vers popup mobile si ouverte (innerHTML suffit car délégation sur le container)
+    const mobilePopup = document.getElementById('mobileShoppingPopup');
+    const mobileBody = document.getElementById('mobileShoppingBody');
+    if (mobileBody && mobilePopup && mobilePopup.classList.contains('active')) {
+        mobileBody.innerHTML = html;
+    }
+}
+
+// Initialiser les interactions shopping par délégation (une seule fois au démarrage)
+function initShoppingEventDelegation() {
+    function buildShoppingCopyText() {
+        const ings = currentShoppingIngredients;
+        const dateRange = getShoppingDateRange();
+        const mainItems = ings.filter(ing => ing.section !== 'stock');
+        const stockItems = ings.filter(ing => ing.section === 'stock');
+
+        const byCategory = {};
+        mainItems.forEach(ing => {
+            const cat = ing.category || 'Autres';
+            if (!byCategory[cat]) byCategory[cat] = [];
+            byCategory[cat].push(ing);
+        });
+
         let text = `🛒 Liste de courses — ${dateRange}\n\n`;
-        Object.keys(mainByCategory).sort().forEach(cat => {
+        Object.keys(byCategory).sort().forEach(cat => {
             text += `${cat}\n`;
-            [...mainByCategory[cat]].sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
+            [...byCategory[cat]].sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
                 const qty = Math.round(ing.quantity * 100) / 100;
                 const unit = ing.unit && ing.unit !== 'unité' ? ` ${ing.unit}` : '';
                 text += `  • ${qty}${unit} ${ing.name}\n`;
@@ -2763,91 +2778,74 @@ function displayRawShoppingList(ingredientsInput) {
         return text;
     }
 
-    function flashCopyBtn(icon) {
-        const btn = document.getElementById('shoppingCopyBtn');
-        if (btn) { btn.textContent = icon; setTimeout(() => { btn.textContent = '📋'; }, 2000); }
-    }
-
-    function doCopyFallback(text) {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        ta.setAttribute('readonly', '');
-        ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:0;outline:0;background:transparent;';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.setSelectionRange(0, text.length);
-        let ok = false;
-        try { ok = document.execCommand('copy'); } catch(e) {}
-        document.body.removeChild(ta);
-        flashCopyBtn(ok ? '✅' : '❌');
-    }
-
-    document.getElementById('shoppingCopyBtn').addEventListener('click', () => {
-        const text = buildCopyText();
-        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-            navigator.clipboard.writeText(text).then(() => flashCopyBtn('✅')).catch(() => doCopyFallback(text));
-        } else {
-            doCopyFallback(text);
-        }
-    });
-
-    // === SAUVEGARDE ===
-    function saveIngredients() {
+    function saveCurrentIngredients() {
         const listId = currentListId || currentShoppingListId;
         if (!listId) return;
         fetch(`${API_URL}/api/shopping-list/${listId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ingredients: ingredientsInput })
+            body: JSON.stringify({ ingredients: currentShoppingIngredients })
         }).catch(err => console.error('Save error:', err));
     }
 
-    // === BOUTONS +/- ===
-    shoppingContent.querySelectorAll('.qty-btn').forEach(btn => {
-        btn.addEventListener('click', e => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.idx);
-            const ing = ingredients[idx];
-            if (!ing) return;
+    function handleShoppingClick(e) {
+        const copyBtn = e.target.closest('.shopping-copy-btn');
+        const qtyPlus = e.target.closest('.qty-plus');
+        const qtyMinus = e.target.closest('.qty-minus');
+        const toStock = e.target.closest('.item-to-stock-btn');
+        const fromStock = e.target.closest('.item-from-stock-btn');
+
+        if (!copyBtn && !qtyPlus && !qtyMinus && !toStock && !fromStock) return;
+        e.stopPropagation();
+
+        if (copyBtn) {
+            const text = buildShoppingCopyText();
+            const flash = (icon) => { copyBtn.textContent = icon; setTimeout(() => { copyBtn.textContent = '📋'; }, 2000); };
+            const fallback = () => {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.setAttribute('readonly', '');
+                ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:0;outline:0;background:transparent;';
+                document.body.appendChild(ta);
+                ta.focus();
+                ta.setSelectionRange(0, text.length);
+                let ok = false;
+                try { ok = document.execCommand('copy'); } catch(ex) {}
+                document.body.removeChild(ta);
+                flash(ok ? '✅' : '❌');
+            };
+            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                navigator.clipboard.writeText(text).then(() => flash('✅')).catch(fallback);
+            } else {
+                fallback();
+            }
+            return;
+        }
+
+        const btn = qtyPlus || qtyMinus || toStock || fromStock;
+        const idx = parseInt(btn.dataset.idx);
+        if (isNaN(idx) || !currentShoppingIngredients[idx]) return;
+
+        if (qtyPlus || qtyMinus) {
+            const ing = currentShoppingIngredients[idx];
             const step = getQuantityStep(ing.unit);
-            if (btn.classList.contains('qty-plus')) {
+            if (qtyPlus) {
                 ing.quantity = Math.round((ing.quantity + step) * 100) / 100;
             } else {
                 ing.quantity = Math.max(0, Math.round((ing.quantity - step) * 100) / 100);
             }
-            ingredientsInput[idx].quantity = ing.quantity;
-            displayRawShoppingList(ingredientsInput);
-            saveIngredients();
-        });
-    });
+        }
+        if (toStock) currentShoppingIngredients[idx].section = 'stock';
+        if (fromStock) currentShoppingIngredients[idx].section = 'main';
 
-    // === METTRE EN STOCK ===
-    shoppingContent.querySelectorAll('.item-to-stock-btn').forEach(btn => {
-        btn.addEventListener('click', e => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.idx);
-            ingredientsInput[idx].section = 'stock';
-            displayRawShoppingList(ingredientsInput);
-            saveIngredients();
-        });
-    });
-
-    // === REMETTRE DANS LA LISTE ===
-    shoppingContent.querySelectorAll('.item-from-stock-btn').forEach(btn => {
-        btn.addEventListener('click', e => {
-            e.stopPropagation();
-            const idx = parseInt(btn.dataset.idx);
-            ingredientsInput[idx].section = 'main';
-            displayRawShoppingList(ingredientsInput);
-            saveIngredients();
-        });
-    });
-
-    // Sync vers popup mobile si ouverte
-    const mobileBody = document.getElementById('mobileShoppingBody');
-    if (mobileBody && document.getElementById('mobileShoppingPopup').classList.contains('active')) {
-        mobileBody.innerHTML = shoppingContent.innerHTML;
+        displayRawShoppingList(currentShoppingIngredients);
+        saveCurrentIngredients();
     }
+
+    const shoppingContent = document.getElementById('shoppingContent');
+    const mobileBody = document.getElementById('mobileShoppingBody');
+    if (shoppingContent) shoppingContent.addEventListener('click', handleShoppingClick);
+    if (mobileBody) mobileBody.addEventListener('click', handleShoppingClick);
 }
 
 // Update shopping list when servings change (+/- buttons)
