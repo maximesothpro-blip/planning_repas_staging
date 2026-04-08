@@ -845,22 +845,6 @@ body {
     color: #333;
 }
 
-.item-to-stock-btn {
-    flex-shrink: 0;
-    background: none;
-    border: none;
-    color: #d1d5db;
-    font-size: 14px;
-    cursor: pointer;
-    padding: 2px 4px;
-    border-radius: 4px;
-    transition: color 0.15s;
-}
-
-.item-to-stock-btn:hover {
-    color: #f59e0b;
-}
-
 /* ===== SHOPPING À VÉRIFIER / EN STOCK SECTION ===== */
 .shopping-a-verifier {
     margin-top: 12px;
@@ -1475,6 +1459,164 @@ body {
 
 .settings-info-btn:hover {
     background: #a78bfa;
+}
+
+/* ===== SHOPPING HEADER BUTTONS ===== */
+.shopping-header-btns {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.shopping-quick-add-btn {
+    background: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 6px;
+    padding: 4px 9px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.shopping-quick-add-btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* ===== ITEM TO STOCK BUTTON (text label) ===== */
+.item-to-stock-btn {
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    color: #9ca3af;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 2px 5px;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.item-to-stock-btn:hover {
+    color: #f59e0b;
+    border-color: #f59e0b;
+    background: #fffbeb;
+}
+
+/* ===== QUICK ADD POPUP (Phase 3) ===== */
+.quick-add-popup {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.quick-add-popup.active {
+    display: flex;
+}
+
+.quick-add-popup-content {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 520px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.quick-add-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #f3e8ff;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+}
+
+.quick-add-header h2 {
+    font-size: 17px;
+    color: #7c3aed;
+    margin: 0;
+}
+
+.quick-add-section {
+    padding: 14px 18px;
+    border-bottom: 1px solid #f9f5ff;
+}
+
+.quick-add-category {
+    font-size: 13px;
+    font-weight: 700;
+    color: #7c3aed;
+    margin: 0 0 10px;
+}
+
+.quick-add-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.quick-add-item {
+    background: #f3e8ff;
+    border: 2px solid transparent;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: #4c1d95;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.quick-add-item:hover {
+    background: #e9d5ff;
+    border-color: #a78bfa;
+}
+
+.quick-add-item.already-added {
+    background: #d1fae5;
+    border-color: #34d399;
+    color: #065f46;
+}
+
+.quick-add-check {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+@media (max-width: 768px) {
+    .quick-add-popup-content {
+        width: 100%;
+        max-width: 100%;
+        max-height: 90vh;
+        border-radius: 20px 20px 0 0;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+    }
+
+    .quick-add-popup {
+        align-items: flex-end;
+    }
+
+    .quick-add-item {
+        font-size: 14px;
+        padding: 8px 16px;
+    }
 }
 
 .settings-shopping-list {
