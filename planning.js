@@ -2633,23 +2633,49 @@ async function addIngredientsToShoppingList(recipe, servings) {
     }
 }
 
+// Formater la plage de dates de la semaine courante (ex: "7 - 13 avr. 2026")
+function getShoppingDateRange() {
+    const { monday, sunday } = getWeekDates(currentWeek, currentYear);
+    const months = ['jan.', 'fév.', 'mar.', 'avr.', 'mai', 'juin',
+                    'juil.', 'août', 'sep.', 'oct.', 'nov.', 'déc.'];
+    const year = sunday.getFullYear();
+    if (monday.getMonth() === sunday.getMonth()) {
+        return `${monday.getDate()} - ${sunday.getDate()} ${months[monday.getMonth()]} ${year}`;
+    }
+    return `${monday.getDate()} ${months[monday.getMonth()]} - ${sunday.getDate()} ${months[sunday.getMonth()]} ${year}`;
+}
+
+// Calcul du pas pour les boutons +/-
+function getQuantityStep(unit) {
+    if (!unit || unit === 'unité') return 1;
+    const u = unit.toLowerCase();
+    if (u === 'kg' || u === 'l') return 0.1;
+    if (u === 'g' || u === 'ml' || u === 'cl') return 10;
+    return 1;
+}
+
 // Display raw JSON in shopping tab
-function displayRawShoppingList(ingredients) {
+function displayRawShoppingList(ingredientsInput) {
     const shoppingContent = document.getElementById('shoppingContent');
 
-    if (!ingredients || ingredients.length === 0) {
+    if (!ingredientsInput || ingredientsInput.length === 0) {
         shoppingContent.innerHTML = '<p class="empty-shopping">Aucun ingrédient dans la liste</p>';
         return;
     }
 
-    console.log('VERSION_1: displayRawShoppingList with Airtable data:', ingredients.length, 'items');
+    // Deep copy + initialiser section si manquante
+    const ingredients = ingredientsInput.map(ing => ({
+        ...ing,
+        section: ing.section || (ing.category === 'Épicerie' ? 'stock' : 'main')
+    }));
+    // Sync section vers le tableau source
+    ingredients.forEach((ing, i) => {
+        if (ingredientsInput[i]) ingredientsInput[i].section = ing.section;
+    });
 
-    // Séparer les ingrédients : "À vérifier" (Épicerie) vs liste principale
-    const A_VERIFIER_CATEGORIES = ['Épicerie'];
-    const mainIngredients = ingredients.filter(ing => !A_VERIFIER_CATEGORIES.includes(ing.category));
-    const aVerifierIngredients = ingredients.filter(ing => A_VERIFIER_CATEGORIES.includes(ing.category));
+    const mainItems = ingredients.filter(ing => ing.section !== 'stock');
+    const stockItems = ingredients.filter(ing => ing.section === 'stock');
 
-    // Grouper par catégorie
     function groupByCategory(items) {
         const byCategory = {};
         items.forEach(ing => {
@@ -2660,104 +2686,168 @@ function displayRawShoppingList(ingredients) {
         return byCategory;
     }
 
-    function renderCategory(category, items) {
-        let html = `<div class="shopping-category">`;
-        html += `<h4>${category}</h4><ul>`;
-        items.sort((a, b) => a.name.localeCompare(b.name));
-        items.forEach(ing => {
-            const quantity = Math.round(ing.quantity * 100) / 100;
-            const unitStr = ing.unit ? ` ${ing.unit}` : '';
-            html += `<li><strong>${quantity}${unitStr}</strong> ${ing.name}</li>`;
-        });
-        html += `</ul></div>`;
-        return html;
+    const dateRange = getShoppingDateRange();
+
+    function renderMainItem(ing, idx) {
+        const qty = Math.round(ing.quantity * 100) / 100;
+        const unitStr = ing.unit && ing.unit !== 'unité' ? ' ' + ing.unit : '';
+        return `<li class="shopping-item">
+            <div class="item-qty-controls">
+                <button class="qty-btn qty-minus" data-idx="${idx}">−</button>
+                <span class="qty-value">${qty}${unitStr}</span>
+                <button class="qty-btn qty-plus" data-idx="${idx}">+</button>
+            </div>
+            <span class="item-name">${ing.name}</span>
+            <button class="item-to-stock-btn" data-idx="${idx}" title="Mettre en stock">⬇</button>
+        </li>`;
     }
 
-    // Construire le texte de copie
+    function renderStockItem(ing, idx) {
+        const qty = Math.round(ing.quantity * 100) / 100;
+        const unitStr = ing.unit && ing.unit !== 'unité' ? ' ' + ing.unit : '';
+        return `<li class="shopping-stock-item">
+            <button class="item-from-stock-btn" data-idx="${idx}" title="Remettre dans la liste">↩</button>
+            <span class="stock-qty">${qty}${unitStr}</span>
+            <span class="item-name">${ing.name}</span>
+        </li>`;
+    }
+
+    const mainByCategory = groupByCategory(mainItems);
+    let mainHtml = '';
+    Object.keys(mainByCategory).sort().forEach(cat => {
+        const items = [...mainByCategory[cat]].sort((a, b) => a.name.localeCompare(b.name));
+        mainHtml += `<div class="shopping-category"><h4>${cat}</h4><ul>`;
+        items.forEach(ing => mainHtml += renderMainItem(ing, ingredients.indexOf(ing)));
+        mainHtml += '</ul></div>';
+    });
+
+    let stockHtml = '';
+    if (stockItems.length > 0) {
+        const sortedStock = [...stockItems].sort((a, b) => a.name.localeCompare(b.name));
+        stockHtml = `<div class="shopping-a-verifier">
+            <div class="a-verifier-header">⚠️ À vérifier / En stock</div>
+            <ul>`;
+        sortedStock.forEach(ing => stockHtml += renderStockItem(ing, ingredients.indexOf(ing)));
+        stockHtml += '</ul></div>';
+    }
+
+    shoppingContent.innerHTML = `
+        <div class="shopping-list-header">
+            <h3>${dateRange}</h3>
+            <button class="shopping-copy-btn" id="shoppingCopyBtn" title="Copier la liste">📋</button>
+        </div>
+        <div class="shopping-list">${mainHtml}</div>
+        ${stockHtml}
+    `;
+
+    // === COPIER ===
     function buildCopyText() {
-        let text = `🛒 Liste de courses — Semaine ${currentWeek}\n\n`;
-        const mainByCategory = groupByCategory(mainIngredients);
+        let text = `🛒 Liste de courses — ${dateRange}\n\n`;
         Object.keys(mainByCategory).sort().forEach(cat => {
             text += `${cat}\n`;
-            mainByCategory[cat].sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
+            [...mainByCategory[cat]].sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
                 const qty = Math.round(ing.quantity * 100) / 100;
-                const unit = ing.unit ? ` ${ing.unit}` : '';
+                const unit = ing.unit && ing.unit !== 'unité' ? ` ${ing.unit}` : '';
                 text += `  • ${qty}${unit} ${ing.name}\n`;
             });
             text += '\n';
         });
-        if (aVerifierIngredients.length > 0) {
-            text += `⚠️ À vérifier\n`;
-            aVerifierIngredients.sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
+        if (stockItems.length > 0) {
+            text += `⚠️ À vérifier / En stock\n`;
+            [...stockItems].sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
                 const qty = Math.round(ing.quantity * 100) / 100;
-                const unit = ing.unit ? ` ${ing.unit}` : '';
+                const unit = ing.unit && ing.unit !== 'unité' ? ` ${ing.unit}` : '';
                 text += `  • ${qty}${unit} ${ing.name}\n`;
             });
         }
         return text;
     }
 
-    // HTML principal
-    const mainByCategory = groupByCategory(mainIngredients);
-    const sortedMain = Object.keys(mainByCategory).sort();
-
-    let html = `<div class="shopping-list-header">
-        <h3>Semaine ${currentWeek} · ${currentYear}</h3>
-        <button class="shopping-copy-btn" id="shoppingCopyBtn" title="Copier la liste">📋</button>
-    </div>`;
-
-    html += '<div class="shopping-list">';
-    sortedMain.forEach(cat => {
-        html += renderCategory(cat, mainByCategory[cat]);
-    });
-    html += '</div>';
-
-    // Section "À vérifier"
-    if (aVerifierIngredients.length > 0) {
-        html += `<div class="shopping-a-verifier">
-            <div class="a-verifier-header">⚠️ À vérifier</div>
-            <ul>`;
-        aVerifierIngredients.sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
-            const qty = Math.round(ing.quantity * 100) / 100;
-            const unitStr = ing.unit ? ` ${ing.unit}` : '';
-            html += `<li><strong>${qty}${unitStr}</strong> ${ing.name}</li>`;
-        });
-        html += `</ul></div>`;
+    function flashCopyBtn(icon) {
+        const btn = document.getElementById('shoppingCopyBtn');
+        if (btn) { btn.textContent = icon; setTimeout(() => { btn.textContent = '📋'; }, 2000); }
     }
 
-    shoppingContent.innerHTML = html;
+    function doCopyFallback(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:0;outline:0;background:transparent;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.setSelectionRange(0, text.length);
+        let ok = false;
+        try { ok = document.execCommand('copy'); } catch(e) {}
+        document.body.removeChild(ta);
+        flashCopyBtn(ok ? '✅' : '❌');
+    }
 
-    // Bouton copier
-    document.getElementById('shoppingCopyBtn').addEventListener('click', async () => {
+    document.getElementById('shoppingCopyBtn').addEventListener('click', () => {
         const text = buildCopyText();
-        try {
-            await navigator.clipboard.writeText(text);
-            const btn = document.getElementById('shoppingCopyBtn');
-            btn.textContent = '✅';
-            setTimeout(() => { btn.textContent = '📋'; }, 2000);
-        } catch(e) {
-            // Fallback pour Safari
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
-            document.body.appendChild(ta);
-            ta.select();
-            document.execCommand('copy');
-            document.body.removeChild(ta);
-            const btn = document.getElementById('shoppingCopyBtn');
-            btn.textContent = '✅';
-            setTimeout(() => { btn.textContent = '📋'; }, 2000);
+        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+            navigator.clipboard.writeText(text).then(() => flashCopyBtn('✅')).catch(() => doCopyFallback(text));
+        } else {
+            doCopyFallback(text);
         }
+    });
+
+    // === SAUVEGARDE ===
+    function saveIngredients() {
+        const listId = currentListId || currentShoppingListId;
+        if (!listId) return;
+        fetch(`${API_URL}/api/shopping-list/${listId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ingredients: ingredientsInput })
+        }).catch(err => console.error('Save error:', err));
+    }
+
+    // === BOUTONS +/- ===
+    shoppingContent.querySelectorAll('.qty-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.idx);
+            const ing = ingredients[idx];
+            if (!ing) return;
+            const step = getQuantityStep(ing.unit);
+            if (btn.classList.contains('qty-plus')) {
+                ing.quantity = Math.round((ing.quantity + step) * 100) / 100;
+            } else {
+                ing.quantity = Math.max(0, Math.round((ing.quantity - step) * 100) / 100);
+            }
+            ingredientsInput[idx].quantity = ing.quantity;
+            displayRawShoppingList(ingredientsInput);
+            saveIngredients();
+        });
+    });
+
+    // === METTRE EN STOCK ===
+    shoppingContent.querySelectorAll('.item-to-stock-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.idx);
+            ingredientsInput[idx].section = 'stock';
+            displayRawShoppingList(ingredientsInput);
+            saveIngredients();
+        });
+    });
+
+    // === REMETTRE DANS LA LISTE ===
+    shoppingContent.querySelectorAll('.item-from-stock-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            const idx = parseInt(btn.dataset.idx);
+            ingredientsInput[idx].section = 'main';
+            displayRawShoppingList(ingredientsInput);
+            saveIngredients();
+        });
     });
 
     // Sync vers popup mobile si ouverte
     const mobileBody = document.getElementById('mobileShoppingBody');
-    if (mobileBody && mobileBody.children.length > 0) {
+    if (mobileBody && document.getElementById('mobileShoppingPopup').classList.contains('active')) {
         mobileBody.innerHTML = shoppingContent.innerHTML;
     }
-
-    console.log('VERSION_1 TEST: Shopping list displayed with new classes');
 }
 
 // Update shopping list when servings change (+/- buttons)
