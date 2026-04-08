@@ -1,4 +1,4 @@
-/* Planning de Repas - v3.11.3-beta */
+/* Planning de Repas - v3.11.4-beta */
 * {
     margin: 0;
     padding: 0;
@@ -747,6 +747,79 @@ body {
 .shopping-category li:hover {
     background: #f3e8ff;
     transform: translateX(2px);
+}
+
+/* ===== SHOPPING LIST HEADER + COPY BTN ===== */
+.shopping-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 100%);
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+}
+
+.shopping-list-header h3 {
+    font-size: 14px;
+    color: white;
+    font-weight: 700;
+    margin: 0;
+}
+
+.shopping-copy-btn {
+    background: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background 0.2s;
+    line-height: 1;
+}
+
+.shopping-copy-btn:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+/* ===== SHOPPING À VÉRIFIER SECTION ===== */
+.shopping-a-verifier {
+    margin-top: 12px;
+    border-radius: 8px;
+    border: 2px dashed #f59e0b;
+    background: #fffbeb;
+    padding: 10px;
+}
+
+.a-verifier-header {
+    font-size: 12px;
+    font-weight: 700;
+    color: #b45309;
+    margin-bottom: 8px;
+    letter-spacing: 0.3px;
+}
+
+.shopping-a-verifier ul {
+    list-style: none;
+    padding: 0;
+}
+
+.shopping-a-verifier li {
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    background: white;
+    border-left: 3px solid #f59e0b;
+    font-size: 13px;
+    color: #78716c;
+    border-radius: 5px;
+    line-height: 1.4;
+}
+
+.shopping-a-verifier li strong {
+    color: #b45309;
+    font-weight: 600;
+    margin-right: 4px;
 }
 
 /* ===== SHOPPING HISTORY ===== */

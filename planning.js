@@ -2637,7 +2637,6 @@ async function addIngredientsToShoppingList(recipe, servings) {
 function displayRawShoppingList(ingredients) {
     const shoppingContent = document.getElementById('shoppingContent');
 
-    // VERSION_1: Code Airtable réactivé avec bonnes classes CSS
     if (!ingredients || ingredients.length === 0) {
         shoppingContent.innerHTML = '<p class="empty-shopping">Aucun ingrédient dans la liste</p>';
         return;
@@ -2645,46 +2644,119 @@ function displayRawShoppingList(ingredients) {
 
     console.log('VERSION_1: displayRawShoppingList with Airtable data:', ingredients.length, 'items');
 
-    // Group by category
-    const byCategory = {};
-    ingredients.forEach(ing => {
-        const cat = ing.category || 'Autres';
-        if (!byCategory[cat]) {
-            byCategory[cat] = [];
-        }
-        byCategory[cat].push(ing);
-    });
+    // Séparer les ingrédients : "À vérifier" (Épicerie) vs liste principale
+    const A_VERIFIER_CATEGORIES = ['Épicerie'];
+    const mainIngredients = ingredients.filter(ing => !A_VERIFIER_CATEGORIES.includes(ing.category));
+    const aVerifierIngredients = ingredients.filter(ing => A_VERIFIER_CATEGORIES.includes(ing.category));
 
-    // Sort categories alphabetically
-    const sortedCategories = Object.keys(byCategory).sort();
-
-    // VERSION_1: Utiliser les bonnes classes CSS
-    let html = '<div class="shopping-list">';
-    html += `<h3>Liste semaine ${currentWeek} - ${currentYear}</h3>`; // VERSION_1: Titre dynamique
-
-    sortedCategories.forEach(category => {
-        html += `<div class="shopping-category">`; // VERSION_1: Bonne classe
-        html += `<h4>${category}</h4>`;
-        html += `<ul>`; // VERSION_1: Sans classe spécifique
-
-        // Sort ingredients by name within category
-        byCategory[category].sort((a, b) => a.name.localeCompare(b.name));
-
-        byCategory[category].forEach(ing => {
-            const quantity = Math.round(ing.quantity * 100) / 100; // 2 decimals
-            // VERSION_1: Formatage propre avec espaces
-            const unitStr = ing.unit ? ` ${ing.unit}` : ''; // Espace avant l'unité si elle existe
-            html += `<li>`;
-            html += `<strong>${quantity}${unitStr}</strong> ${ing.name}`; // Strong pour quantité + espaces
-            html += `</li>`;
+    // Grouper par catégorie
+    function groupByCategory(items) {
+        const byCategory = {};
+        items.forEach(ing => {
+            const cat = ing.category || 'Autres';
+            if (!byCategory[cat]) byCategory[cat] = [];
+            byCategory[cat].push(ing);
         });
+        return byCategory;
+    }
 
+    function renderCategory(category, items) {
+        let html = `<div class="shopping-category">`;
+        html += `<h4>${category}</h4><ul>`;
+        items.sort((a, b) => a.name.localeCompare(b.name));
+        items.forEach(ing => {
+            const quantity = Math.round(ing.quantity * 100) / 100;
+            const unitStr = ing.unit ? ` ${ing.unit}` : '';
+            html += `<li><strong>${quantity}${unitStr}</strong> ${ing.name}</li>`;
+        });
         html += `</ul></div>`;
-    });
+        return html;
+    }
 
+    // Construire le texte de copie
+    function buildCopyText() {
+        let text = `🛒 Liste de courses — Semaine ${currentWeek}\n\n`;
+        const mainByCategory = groupByCategory(mainIngredients);
+        Object.keys(mainByCategory).sort().forEach(cat => {
+            text += `${cat}\n`;
+            mainByCategory[cat].sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
+                const qty = Math.round(ing.quantity * 100) / 100;
+                const unit = ing.unit ? ` ${ing.unit}` : '';
+                text += `  • ${qty}${unit} ${ing.name}\n`;
+            });
+            text += '\n';
+        });
+        if (aVerifierIngredients.length > 0) {
+            text += `⚠️ À vérifier\n`;
+            aVerifierIngredients.sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
+                const qty = Math.round(ing.quantity * 100) / 100;
+                const unit = ing.unit ? ` ${ing.unit}` : '';
+                text += `  • ${qty}${unit} ${ing.name}\n`;
+            });
+        }
+        return text;
+    }
+
+    // HTML principal
+    const mainByCategory = groupByCategory(mainIngredients);
+    const sortedMain = Object.keys(mainByCategory).sort();
+
+    let html = `<div class="shopping-list-header">
+        <h3>Semaine ${currentWeek} · ${currentYear}</h3>
+        <button class="shopping-copy-btn" id="shoppingCopyBtn" title="Copier la liste">📋</button>
+    </div>`;
+
+    html += '<div class="shopping-list">';
+    sortedMain.forEach(cat => {
+        html += renderCategory(cat, mainByCategory[cat]);
+    });
     html += '</div>';
 
+    // Section "À vérifier"
+    if (aVerifierIngredients.length > 0) {
+        html += `<div class="shopping-a-verifier">
+            <div class="a-verifier-header">⚠️ À vérifier</div>
+            <ul>`;
+        aVerifierIngredients.sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
+            const qty = Math.round(ing.quantity * 100) / 100;
+            const unitStr = ing.unit ? ` ${ing.unit}` : '';
+            html += `<li><strong>${qty}${unitStr}</strong> ${ing.name}</li>`;
+        });
+        html += `</ul></div>`;
+    }
+
     shoppingContent.innerHTML = html;
+
+    // Bouton copier
+    document.getElementById('shoppingCopyBtn').addEventListener('click', async () => {
+        const text = buildCopyText();
+        try {
+            await navigator.clipboard.writeText(text);
+            const btn = document.getElementById('shoppingCopyBtn');
+            btn.textContent = '✅';
+            setTimeout(() => { btn.textContent = '📋'; }, 2000);
+        } catch(e) {
+            // Fallback pour Safari
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            const btn = document.getElementById('shoppingCopyBtn');
+            btn.textContent = '✅';
+            setTimeout(() => { btn.textContent = '📋'; }, 2000);
+        }
+    });
+
+    // Sync vers popup mobile si ouverte
+    const mobileBody = document.getElementById('mobileShoppingBody');
+    if (mobileBody && mobileBody.children.length > 0) {
+        mobileBody.innerHTML = shoppingContent.innerHTML;
+    }
+
     console.log('VERSION_1 TEST: Shopping list displayed with new classes');
 }
 
