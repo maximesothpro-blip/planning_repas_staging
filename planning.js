@@ -2806,13 +2806,18 @@ function openQuickAddPopup() {
         html += `<div class="quick-add-section">
             <h4 class="quick-add-category">${category}</h4>
             <div class="quick-add-grid">`;
-        items.forEach(item => {
+        items.forEach((item, itemIdx) => {
+            const isCustom = itemIdx >= baseItems.length;
             const alreadyIn = currentShoppingIngredients.some(s => s.name === item.name && s.section !== 'stock');
-            html += `<button class="quick-add-item ${alreadyIn ? 'already-added' : ''}"
-                data-name="${item.name}" data-qty="${item.quantity}" data-unit="${item.unit}" data-cat="${item.category}">
-                <span class="quick-add-item-label">${item.name}</span>
-                ${alreadyIn ? '<span class="quick-add-check">✓</span><input type="number" class="quick-add-inline-qty" value="' + currentShoppingIngredients.find(s=>s.name===item.name&&s.section!=="stock")?.quantity + '" min="0.1" step="0.1">' : ''}
-            </button>`;
+            const currentQty = alreadyIn ? currentShoppingIngredients.find(s => s.name === item.name && s.section !== 'stock')?.quantity : null;
+            html += `<div class="quick-add-item-wrapper ${isCustom ? 'is-custom' : ''}">
+                <button class="quick-add-item ${alreadyIn ? 'already-added' : ''}"
+                    data-name="${item.name}" data-qty="${item.quantity}" data-unit="${item.unit}" data-cat="${item.category}">
+                    <span class="quick-add-item-label">${item.name}</span>
+                    ${alreadyIn ? `<span class="quick-add-check">✓</span><input type="number" class="quick-add-inline-qty" value="${currentQty}" min="0.1" step="0.1">` : ''}
+                </button>
+                ${isCustom ? `<button class="quick-add-delete-btn" data-name="${item.name}" data-cat="${category}" title="Supprimer">×</button>` : ''}
+            </div>`;
         });
         html += `</div>
             <div class="quick-add-custom-row">
@@ -2909,6 +2914,23 @@ function openQuickAddPopup() {
         };
         btn.addEventListener('click', doAdd);
         row.querySelector('.quick-add-custom-name').addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+    });
+
+    // Supprimer un item custom
+    body.querySelectorAll('.quick-add-delete-btn').forEach(btn => {
+        btn.addEventListener('click', e => {
+            e.stopPropagation();
+            const name = btn.dataset.name;
+            const cat = btn.dataset.cat;
+            try {
+                const stored = JSON.parse(localStorage.getItem('customQuickAddItems') || '{}');
+                if (stored[cat]) {
+                    stored[cat] = stored[cat].filter(i => i.name !== name);
+                    localStorage.setItem('customQuickAddItems', JSON.stringify(stored));
+                }
+            } catch(ex) {}
+            openQuickAddPopup(); // Re-render
+        });
     });
 }
 
