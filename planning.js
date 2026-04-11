@@ -3672,5 +3672,122 @@ modifyRecipeForm.addEventListener('submit', async (e) => {
     }
 });
 
+// ===== CHAT IA =====
+let chatHistory = [];
+let chatIsLoading = false;
+
+function openChatPopup() {
+    document.getElementById('chatPopup').classList.add('active');
+}
+
+function closeChatPopup() {
+    document.getElementById('chatPopup').classList.remove('active');
+}
+
+function resetChat() {
+    chatHistory = [];
+    const messages = document.getElementById('chatMessages');
+    messages.innerHTML = `
+        <div class="chat-message assistant">
+            <div class="chat-bubble">Bonjour ! Je suis ton assistant repas 🍽️<br>Je peux t'aider à <strong>créer une recette</strong> ou à <strong>planifier ta semaine</strong>. Dis-moi ce que tu veux !</div>
+        </div>`;
+}
+
+function appendChatMessage(role, html) {
+    const messages = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = `chat-message ${role}`;
+    div.innerHTML = `<div class="chat-bubble">${html}</div>`;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+    return div;
+}
+
+function showChatTyping() {
+    const messages = document.getElementById('chatMessages');
+    const div = document.createElement('div');
+    div.className = 'chat-message assistant';
+    div.id = 'chatTypingIndicator';
+    div.innerHTML = `<div class="chat-typing"><span></span><span></span><span></span></div>`;
+    messages.appendChild(div);
+    messages.scrollTop = messages.scrollHeight;
+}
+
+function removeChatTyping() {
+    const el = document.getElementById('chatTypingIndicator');
+    if (el) el.remove();
+}
+
+async function sendChatMessage() {
+    if (chatIsLoading) return;
+    const input = document.getElementById('chatInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    input.style.height = 'auto';
+    chatIsLoading = true;
+    document.getElementById('chatSendBtn').disabled = true;
+
+    appendChatMessage('user', text);
+    chatHistory.push({ role: 'user', content: text });
+    showChatTyping();
+
+    try {
+        const response = await fetch(`${window.BACKEND_API_URL}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: text, history: chatHistory.slice(-10) })
+        });
+
+        const data = await response.json();
+        removeChatTyping();
+
+        const replyText = data.message || 'Je n\'ai pas pu répondre, réessaie.';
+        chatHistory.push({ role: 'assistant', content: replyText });
+
+        let bubbleHtml = replyText.replace(/\n/g, '<br>');
+
+        // Action: create recipe
+        if (data.action === 'create_recipe') {
+            bubbleHtml += `<br><button class="chat-action-btn" onclick="closeChatPopup(); document.getElementById('createRecipeBtn') && document.getElementById('createRecipeBtn').click();">✨ Créer une recette</button>`;
+        }
+        // Action: plan week
+        if (data.action === 'plan_week') {
+            bubbleHtml += `<br><button class="chat-action-btn" onclick="closeChatPopup(); showNotification('Planification automatique à venir !');">📅 Planifier la semaine</button>`;
+        }
+
+        appendChatMessage('assistant', bubbleHtml);
+
+    } catch (err) {
+        removeChatTyping();
+        console.error('❌ Chat error:', err);
+        appendChatMessage('assistant', 'Erreur de connexion 😕 Réessaie dans un instant.');
+    }
+
+    chatIsLoading = false;
+    document.getElementById('chatSendBtn').disabled = false;
+}
+
+// Chat event listeners
+document.getElementById('chatFab').addEventListener('click', openChatPopup);
+document.getElementById('closeChatPopup').addEventListener('click', closeChatPopup);
+document.getElementById('chatNewBtn').addEventListener('click', resetChat);
+
+document.getElementById('chatSendBtn').addEventListener('click', sendChatMessage);
+
+document.getElementById('chatInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendChatMessage();
+    }
+});
+
+// Auto-resize textarea
+document.getElementById('chatInput').addEventListener('input', function() {
+    this.style.height = 'auto';
+    this.style.height = Math.min(this.scrollHeight, 100) + 'px';
+});
+
 // ===== DÉMARRAGE =====
 init();

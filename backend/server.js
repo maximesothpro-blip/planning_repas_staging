@@ -14,6 +14,7 @@ app.use(express.json());
 const N8N_CREATE_RECIPE_WEBHOOK = 'https://n8n.srv1081620.hstgr.cloud/webhook/create-recepie-staging';
 const N8N_ACCEPT_RECIPE_WEBHOOK = 'https://n8n.srv1081620.hstgr.cloud/webhook/accept-recepie-staging';
 const N8N_MODIFY_RECIPE_WEBHOOK = 'https://n8n.srv1081620.hstgr.cloud/webhook/modifie-recepie-staging';
+const N8N_CHAT_WEBHOOK = 'https://n8n.srv1081620.hstgr.cloud/webhook/chat-planning-staging';
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 
@@ -696,6 +697,102 @@ app.delete('/api/shopping-list/:id', async (req, res) => {
       error: 'Failed to delete shopping list',
       details: error.response?.data || error.message
     });
+  }
+});
+
+// ===== CHAT IA =====
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { message, history } = req.body;
+    if (!message) return res.status(400).json({ error: 'Message requis' });
+
+    console.log(`💬 Chat message: "${message}"`);
+
+    const response = await axios.post(N8N_CHAT_WEBHOOK, {
+      message,
+      history: history || [],
+      timestamp: new Date().toISOString()
+    }, { timeout: 60000 });
+
+    // n8n peut renvoyer différents formats
+    const data = response.data;
+    let text = '';
+    let action = null;
+    let actionData = null;
+
+    if (typeof data === 'string') {
+      text = data;
+    } else if (data.message) {
+      text = data.message;
+      action = data.action || null;
+      actionData = data.actionData || null;
+    } else if (data.response) {
+      text = data.response;
+      action = data.action || null;
+    } else if (data.text) {
+      text = data.text;
+    } else {
+      text = JSON.stringify(data);
+    }
+
+    res.json({ success: true, message: text, action, actionData });
+  } catch (error) {
+    console.error('Chat error:', error.response?.data || error.message);
+    const isTimeout = error.code === 'ECONNABORTED';
+    res.status(500).json({
+      error: isTimeout ? 'L\'IA met trop de temps à répondre' : 'Erreur de communication avec l\'IA'
+    });
+  }
+});
+
+// ===== PRODUITS RAPIDES (Quick Add Items) =====
+
+app.get('/api/quick-items', async (req, res) => {
+  try {
+    const response = await axios.get(
+      `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Produits%20Rapides`,
+      { headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` } }
+    );
+    const items = response.data.records.map(record => ({
+      id: record.id,
+      name: record.fields['Name'] || '',
+      quantity: record.fields['Quantité'] || 1,
+      unit: record.fields['Unité'] || 'pièce',
+      category: record.fields['Catégorie'] || 'Alimentaire'
+    }));
+    res.json({ success: true, items });
+  } catch (error) {
+    console.error('Error fetching quick items:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to fetch quick items' });
+  }
+});
+
+app.post('/api/quick-items', async (req, res) => {
+  try {
+    const { name, quantity, unit, category } = req.body;
+    if (!name) return res.status(400).json({ error: 'Name is required' });
+    const response = await axios.post(
+      `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Produits%20Rapides`,
+      { fields: { 'Name': name, 'Quantité': quantity || 1, 'Unité': unit || 'pièce', 'Catégorie': category || 'Alimentaire' } },
+      { headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}`, 'Content-Type': 'application/json' } }
+    );
+    res.json({ success: true, item: { id: response.data.id, name, quantity: quantity || 1, unit: unit || 'pièce', category: category || 'Alimentaire' } });
+  } catch (error) {
+    console.error('Error creating quick item:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to create quick item' });
+  }
+});
+
+app.delete('/api/quick-items/:id', async (req, res) => {
+  try {
+    await axios.delete(
+      `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Produits%20Rapides/${req.params.id}`,
+      { headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` } }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting quick item:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to delete quick item' });
   }
 });
 
