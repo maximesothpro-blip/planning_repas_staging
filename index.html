@@ -268,6 +268,20 @@
         </div>
     </div>
 
+    <!-- Popup Ingrédients des Recettes -->
+    <div class="quick-add-popup" id="recipeIngredientsPopup">
+        <div class="quick-add-popup-content">
+            <div class="quick-add-header">
+                <h2>📖 Ingrédients des recettes</h2>
+                <button class="close-popup" id="closeRecipeIngredientsPopup">×</button>
+            </div>
+            <div style="padding: 10px 18px 0;">
+                <input type="text" id="recipeIngredientsSearch" placeholder="Rechercher un ingrédient..." class="recipe-ing-search">
+            </div>
+            <div id="recipeIngredientsList" style="padding: 10px 18px 20px; max-height: 60vh; overflow-y: auto;"></div>
+        </div>
+    </div>
+
     <!-- Notification popup -->
     <div class="notification-popup" id="notificationPopup">
         <div class="notification-content">
@@ -277,7 +291,7 @@
     </div>
 
     <!-- Version -->
-    <div class="version-info">Staging v2.2 - Fix liste vide semaine courante - 10/04/2026</div>
+    <div class="version-info">Staging v2.3 - Mobile add fix + quick-add UX + recipe ingredients popup - 10/04/2026</div>
 
     <script src="config.js"></script>
     <script src="planning.js"></script>
@@ -384,6 +398,11 @@
                     const recipe = (window.recipes || []).find(r => r.id === recipeId);
                     if (recipe) showRecipePopup(recipe, { id: recordId, servings: defaultServings });
                 });
+                // Ajouter les ingrédients à la liste de courses
+                const recipeObj = (typeof recipes !== 'undefined' ? recipes : []).find(r => r.id === recipeId);
+                if (recipeObj && typeof addIngredientsToShoppingList === 'function') {
+                    await addIngredientsToShoppingList(recipeObj, defaultServings);
+                }
             }
         } catch(err) {
             console.error('Erreur ajout recette mobile:', err);

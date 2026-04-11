@@ -2725,14 +2725,14 @@ function displayRawShoppingList(ingredientsInput) {
     }
 
     const emptyMsg = mainItems.length === 0 && stockItems.length === 0
-        ? `<p class="empty-shopping">Aucun ingrédient — ajoutez des repas au planning ou utilisez ⚡ Rapide</p>`
+        ? `<p class="empty-shopping">Aucun ingrédient — ajoutez des repas au planning ou utilisez ⚡ Ajouter</p>`
         : '';
 
     const html = `
         <div class="shopping-list-header">
             <h3>${dateRange}</h3>
             <div class="shopping-header-btns">
-                <button class="shopping-quick-add-btn" title="Ajouter rapidement">⚡ Rapide</button>
+                <button class="shopping-quick-add-btn" title="Ajouter rapidement">⚡ Ajouter</button>
                 <button class="shopping-copy-btn" title="Copier la liste">📋</button>
             </div>
         </div>
@@ -2754,7 +2754,7 @@ function displayRawShoppingList(ingredientsInput) {
 
 // ===== PHASE 3 : AJOUT RAPIDE =====
 const QUICK_ADD_ITEMS = {
-    '🥐 Petit-déjeuner': [
+    '🥗 Alimentaire': [
         { name: 'Oeufs', quantity: 6, unit: 'pièce', category: 'Autre' },
         { name: 'Lait', quantity: 1, unit: 'L', category: 'Produits Laitiers' },
         { name: 'Pain', quantity: 1, unit: 'pièce', category: 'Féculents' },
@@ -2769,7 +2769,7 @@ const QUICK_ADD_ITEMS = {
         { name: 'Banane', quantity: 4, unit: 'pièce', category: 'Fruits & Légumes' },
         { name: 'Jus de pomme', quantity: 1, unit: 'L', category: 'Boissons' },
     ],
-    '🧹 Entretien maison': [
+    '🏠 Autre': [
         { name: 'Liquide vaisselle', quantity: 1, unit: 'bouteille', category: 'Entretien' },
         { name: 'Éponge', quantity: 2, unit: 'pièce', category: 'Entretien' },
         { name: 'Sac poubelle', quantity: 1, unit: 'rouleau', category: 'Entretien' },
@@ -2784,74 +2784,206 @@ const QUICK_ADD_ITEMS = {
 };
 
 function openQuickAddPopup() {
+    // Fermer popup mobile shopping si ouvert
+    document.getElementById('mobileShoppingPopup')?.classList.remove('active');
+
     const popup = document.getElementById('quickAddPopup');
     const body = document.getElementById('quickAddBody');
     if (!popup || !body) return;
 
-    // Fermeture
     document.getElementById('closeQuickAddPopup').onclick = () => popup.classList.remove('active');
     popup.onclick = (e) => { if (e.target === popup) popup.classList.remove('active'); };
 
-    // Construire le contenu
-    let html = '';
-    Object.entries(QUICK_ADD_ITEMS).forEach(([category, items]) => {
+    // Charger les items custom depuis localStorage
+    let customItems = {};
+    try { customItems = JSON.parse(localStorage.getItem('customQuickAddItems') || '{}'); } catch(e) {}
+
+    let html = `<button class="recipe-ingredients-btn" id="openRecipeIngredientsBtn">📖 Depuis les recettes</button>`;
+
+    Object.entries(QUICK_ADD_ITEMS).forEach(([category, baseItems]) => {
+        const extra = customItems[category] || [];
+        const items = [...baseItems, ...extra];
         html += `<div class="quick-add-section">
             <h4 class="quick-add-category">${category}</h4>
             <div class="quick-add-grid">`;
         items.forEach(item => {
-            const alreadyIn = currentShoppingIngredients.some(
-                s => s.name === item.name && s.section !== 'stock'
-            );
+            const alreadyIn = currentShoppingIngredients.some(s => s.name === item.name && s.section !== 'stock');
             html += `<button class="quick-add-item ${alreadyIn ? 'already-added' : ''}"
-                data-name="${item.name}" data-qty="${item.quantity}"
-                data-unit="${item.unit}" data-cat="${item.category}">
-                ${item.name}
-                ${alreadyIn ? '<span class="quick-add-check">✓</span>' : ''}
+                data-name="${item.name}" data-qty="${item.quantity}" data-unit="${item.unit}" data-cat="${item.category}">
+                <span class="quick-add-item-label">${item.name}</span>
+                ${alreadyIn ? '<span class="quick-add-check">✓</span><input type="number" class="quick-add-inline-qty" value="' + currentShoppingIngredients.find(s=>s.name===item.name&&s.section!=="stock")?.quantity + '" min="0.1" step="0.1">' : ''}
             </button>`;
         });
-        html += `</div></div>`;
+        html += `</div>
+            <div class="quick-add-custom-row">
+                <input type="text" class="quick-add-custom-name" placeholder="Autre produit..." data-cat="${category}">
+                <select class="quick-add-custom-unit">
+                    <option value="pièce">pièce</option>
+                    <option value="g">g</option>
+                    <option value="kg">kg</option>
+                    <option value="L">L</option>
+                    <option value="ml">ml</option>
+                    <option value="cl">cl</option>
+                    <option value="bouteille">bouteille</option>
+                    <option value="paquet">paquet</option>
+                    <option value="boîte">boîte</option>
+                    <option value="pot">pot</option>
+                    <option value="rouleau">rouleau</option>
+                    <option value="flacon">flacon</option>
+                </select>
+                <button class="quick-add-custom-btn" data-cat="${category}">＋</button>
+            </div>
+        </div>`;
     });
 
     body.innerHTML = html;
     popup.classList.add('active');
 
+    // Bouton "Depuis les recettes"
+    document.getElementById('openRecipeIngredientsBtn')?.addEventListener('click', () => {
+        popup.classList.remove('active');
+        openRecipeIngredientsPopup();
+    });
+
     // Clics sur les items
     body.querySelectorAll('.quick-add-item').forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', e => {
+            // Ne pas déclencher si on clique sur l'input qty
+            if (e.target.classList.contains('quick-add-inline-qty')) return;
+            e.stopPropagation();
             const name = btn.dataset.name;
             const qty = parseFloat(btn.dataset.qty);
             const unit = btn.dataset.unit;
             const cat = btn.dataset.cat;
+            const existing = currentShoppingIngredients.find(s => s.name === name && s.unit === unit && s.section !== 'stock');
 
-            const existing = currentShoppingIngredients.find(
-                s => s.name === name && s.unit === unit && s.section !== 'stock'
-            );
-            if (existing) {
-                // Déjà dans la liste → retirer
-                existing.quantity = Math.max(0, existing.quantity - qty);
-                if (existing.quantity === 0) {
-                    currentShoppingIngredients.splice(currentShoppingIngredients.indexOf(existing), 1);
-                }
+            if (btn.classList.contains('already-added')) {
+                // Retirer
+                if (existing) currentShoppingIngredients.splice(currentShoppingIngredients.indexOf(existing), 1);
                 btn.classList.remove('already-added');
                 btn.querySelector('.quick-add-check')?.remove();
+                btn.querySelector('.quick-add-inline-qty')?.remove();
             } else {
                 // Ajouter
                 currentShoppingIngredients.push({ name, quantity: qty, unit, category: cat, section: 'main' });
                 btn.classList.add('already-added');
-                btn.insertAdjacentHTML('beforeend', '<span class="quick-add-check">✓</span>');
+                btn.insertAdjacentHTML('beforeend', `<span class="quick-add-check">✓</span><input type="number" class="quick-add-inline-qty" value="${qty}" min="0.1" step="0.1">`);
+                const qtyInput = btn.querySelector('.quick-add-inline-qty');
+                qtyInput.addEventListener('click', e => e.stopPropagation());
+                qtyInput.addEventListener('change', () => {
+                    const ing = currentShoppingIngredients.find(s => s.name === name && s.unit === unit && s.section !== 'stock');
+                    if (ing) ing.quantity = parseFloat(qtyInput.value) || qty;
+                    displayRawShoppingList(currentShoppingIngredients);
+                    saveCurrentIngredients();
+                });
             }
-
             displayRawShoppingList(currentShoppingIngredients);
-            const listId = currentListId || currentShoppingListId;
-            if (listId) {
-                fetch(`${API_URL}/api/shopping-list/${listId}`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ingredients: currentShoppingIngredients })
-                }).catch(err => console.error('Save error:', err));
-            }
+            saveCurrentIngredients();
         });
     });
+
+    // Ajouter produit custom
+    body.querySelectorAll('.quick-add-custom-btn').forEach(btn => {
+        const row = btn.closest('.quick-add-custom-row');
+        const doAdd = () => {
+            const nameInput = row.querySelector('.quick-add-custom-name');
+            const unitSelect = row.querySelector('.quick-add-custom-unit');
+            const name = nameInput.value.trim();
+            const unit = unitSelect.value;
+            const cat = btn.dataset.cat;
+            if (!name) return;
+            currentShoppingIngredients.push({ name, quantity: 1, unit, category: cat, section: 'main' });
+            displayRawShoppingList(currentShoppingIngredients);
+            saveCurrentIngredients();
+            // Sauvegarder en localStorage
+            try {
+                const stored = JSON.parse(localStorage.getItem('customQuickAddItems') || '{}');
+                if (!stored[cat]) stored[cat] = [];
+                if (!stored[cat].find(i => i.name === name)) {
+                    stored[cat].push({ name, quantity: 1, unit, category: cat });
+                    localStorage.setItem('customQuickAddItems', JSON.stringify(stored));
+                }
+            } catch(ex) {}
+            nameInput.value = '';
+            openQuickAddPopup(); // Re-render to show new item
+        };
+        btn.addEventListener('click', doAdd);
+        row.querySelector('.quick-add-custom-name').addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
+    });
+}
+
+function saveCurrentIngredients() {
+    const listId = currentListId || currentShoppingListId;
+    if (!listId) return;
+    fetch(`${API_URL}/api/shopping-list/${listId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ingredients: currentShoppingIngredients })
+    }).catch(err => console.error('Save error:', err));
+}
+
+function openRecipeIngredientsPopup() {
+    const popup = document.getElementById('recipeIngredientsPopup');
+    const list = document.getElementById('recipeIngredientsList');
+    const searchInput = document.getElementById('recipeIngredientsSearch');
+    if (!popup || !list || !searchInput) return;
+
+    // Extraire tous les ingrédients uniques de toutes les recettes
+    const ingredientMap = {};
+    (typeof recipes !== 'undefined' ? recipes : []).forEach(recipe => {
+        try {
+            let ings = typeof recipe.ingredients === 'string'
+                ? JSON.parse(recipe.ingredients)
+                : (Array.isArray(recipe.ingredients) ? recipe.ingredients : []);
+            ings.forEach(ing => {
+                const name = (ing.ingredient || ing.nom || '').trim();
+                if (!name) return;
+                const key = name.toLowerCase();
+                if (!ingredientMap[key]) ingredientMap[key] = { name, unit: ing.unite || 'unité', category: categorizeIngredient(name) };
+            });
+        } catch(e) {}
+    });
+    const allIngredients = Object.values(ingredientMap).sort((a, b) => a.name.localeCompare(b.name));
+
+    function renderList(query) {
+        const filtered = allIngredients.filter(i => i.name.toLowerCase().includes(query.toLowerCase()));
+        if (filtered.length === 0) {
+            list.innerHTML = '<p class="empty-shopping">Aucun ingrédient trouvé</p>';
+            return;
+        }
+        list.innerHTML = filtered.map(ing => `
+            <div class="recipe-ing-item">
+                <span class="recipe-ing-name">${ing.name}${ing.unit && ing.unit !== 'unité' ? ` <span class="recipe-ing-unit">${ing.unit}</span>` : ''}</span>
+                <button class="recipe-ing-add-btn" data-name="${ing.name}" data-unit="${ing.unit}" data-cat="${ing.category}">＋</button>
+            </div>
+        `).join('');
+
+        list.querySelectorAll('.recipe-ing-add-btn').forEach(addBtn => {
+            addBtn.addEventListener('click', () => {
+                const name = addBtn.dataset.name;
+                const unit = addBtn.dataset.unit || 'unité';
+                const cat = addBtn.dataset.cat;
+                const existing = currentShoppingIngredients.find(s => s.name === name && s.section !== 'stock');
+                if (existing) {
+                    existing.quantity += 1;
+                } else {
+                    currentShoppingIngredients.push({ name, quantity: 1, unit, category: cat, section: 'main' });
+                }
+                addBtn.textContent = '✓';
+                addBtn.classList.add('added');
+                setTimeout(() => { addBtn.textContent = '＋'; addBtn.classList.remove('added'); }, 1500);
+                displayRawShoppingList(currentShoppingIngredients);
+                saveCurrentIngredients();
+            });
+        });
+    }
+
+    renderList('');
+    searchInput.value = '';
+    searchInput.oninput = () => renderList(searchInput.value);
+    popup.classList.add('active');
+    document.getElementById('closeRecipeIngredientsPopup').onclick = () => popup.classList.remove('active');
+    popup.onclick = (e) => { if (e.target === popup) popup.classList.remove('active'); };
 }
 
 // Initialiser les interactions shopping par délégation (une seule fois au démarrage)
@@ -2888,16 +3020,6 @@ function initShoppingEventDelegation() {
             });
         }
         return text;
-    }
-
-    function saveCurrentIngredients() {
-        const listId = currentListId || currentShoppingListId;
-        if (!listId) return;
-        fetch(`${API_URL}/api/shopping-list/${listId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ingredients: currentShoppingIngredients })
-        }).catch(err => console.error('Save error:', err));
     }
 
     function handleShoppingClick(e) {

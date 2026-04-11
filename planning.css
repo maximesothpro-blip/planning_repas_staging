@@ -2647,3 +2647,138 @@ body {
         padding: 4px 8px;
     }
 }
+
+/* ===== RECIPE INGREDIENTS POPUP ===== */
+.recipe-ingredients-btn {
+    display: block;
+    width: calc(100% - 36px);
+    margin: 14px 18px 4px;
+    background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+}
+
+.recipe-ing-search {
+    width: 100%;
+    border: 1px solid #e9d5ff;
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
+    outline: none;
+}
+
+.recipe-ing-search:focus {
+    border-color: #a78bfa;
+}
+
+.recipe-ing-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f9f5ff;
+}
+
+.recipe-ing-name {
+    font-size: 14px;
+    color: #333;
+}
+
+.recipe-ing-unit {
+    font-size: 12px;
+    color: #9ca3af;
+    margin-left: 4px;
+}
+
+.recipe-ing-add-btn {
+    background: #f3e8ff;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 14px;
+    color: #7c3aed;
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+
+.recipe-ing-add-btn:hover {
+    background: #e9d5ff;
+}
+
+.recipe-ing-add-btn.added {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+/* ===== QUICK ADD CUSTOM ROW ===== */
+.quick-add-custom-row {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    align-items: center;
+}
+
+.quick-add-custom-name {
+    flex: 1;
+    border: 1px solid #e9d5ff;
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 13px;
+    outline: none;
+    min-width: 0;
+}
+
+.quick-add-custom-name:focus {
+    border-color: #a78bfa;
+}
+
+.quick-add-custom-unit {
+    border: 1px solid #e9d5ff;
+    border-radius: 8px;
+    padding: 6px 4px;
+    font-size: 12px;
+    color: #555;
+    background: white;
+    outline: none;
+    flex-shrink: 0;
+}
+
+.quick-add-custom-btn {
+    background: #7c3aed;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.quick-add-custom-btn:hover {
+    background: #6d28d9;
+}
+
+/* ===== QUICK ADD INLINE QTY INPUT ===== */
+.quick-add-inline-qty {
+    width: 45px;
+    border: 1px solid #a78bfa;
+    border-radius: 4px;
+    padding: 2px 4px;
+    font-size: 12px;
+    color: #7c3aed;
+    text-align: center;
+    margin-left: 4px;
+    background: white;
+}
+
+.quick-add-item-label {
+    pointer-events: none;
+}
