@@ -2783,7 +2783,16 @@ const QUICK_ADD_ITEMS = {
     ]
 };
 
-function openQuickAddPopup() {
+// Convertit la catégorie Airtable ("Alimentaire"/"Autre") vers la clé UI avec emoji
+function airtableCatToUiCat(cat) {
+    return cat === 'Autre' ? '🏠 Autre' : '🥗 Alimentaire';
+}
+// Convertit la clé UI vers la catégorie Airtable propre
+function uiCatToAirtableCat(uiCat) {
+    return uiCat.includes('Autre') ? 'Autre' : 'Alimentaire';
+}
+
+async function openQuickAddPopup() {
     // Fermer popup mobile shopping si ouvert
     document.getElementById('mobileShoppingPopup')?.classList.remove('active');
 
@@ -2794,55 +2803,61 @@ function openQuickAddPopup() {
     document.getElementById('closeQuickAddPopup').onclick = () => popup.classList.remove('active');
     popup.onclick = (e) => { if (e.target === popup) popup.classList.remove('active'); };
 
-    // Charger les items custom depuis localStorage
-    let customItems = {};
-    try { customItems = JSON.parse(localStorage.getItem('customQuickAddItems') || '{}'); } catch(e) {}
+    // Afficher état de chargement
+    body.innerHTML = '<p style="text-align:center;padding:30px;color:#9ca3af;">Chargement...</p>';
+    popup.classList.add('active');
+
+    // Charger les items custom depuis Airtable
+    const customByCategory = {}; // { uiCatKey: [{ id, name, quantity, unit, category }] }
+    try {
+        const resp = await fetch(`${API_URL}/api/quick-items`);
+        const data = await resp.json();
+        if (data.success) {
+            data.items.forEach(item => {
+                const uiCat = airtableCatToUiCat(item.category);
+                if (!customByCategory[uiCat]) customByCategory[uiCat] = [];
+                customByCategory[uiCat].push(item);
+            });
+        }
+    } catch(e) { console.error('Failed to load quick items from Airtable:', e); }
+
+    const UNITS = ['pièce','g','kg','L','ml','cl','bouteille','paquet','boîte','pot','rouleau','flacon'];
+    const unitOptions = UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
 
     let html = `<button class="recipe-ingredients-btn" id="openRecipeIngredientsBtn">📖 Ajouter aliments présents dans les recettes</button>`;
 
-    Object.entries(QUICK_ADD_ITEMS).forEach(([category, baseItems]) => {
-        const extra = customItems[category] || [];
-        const items = [...baseItems, ...extra];
+    Object.entries(QUICK_ADD_ITEMS).forEach(([uiCategory, baseItems]) => {
+        const customItems = customByCategory[uiCategory] || [];
+        const allItems = [...baseItems.map(i => ({ ...i, isCustom: false })),
+                         ...customItems.map(i => ({ ...i, isCustom: true }))];
+
         html += `<div class="quick-add-section">
-            <h4 class="quick-add-category">${category}</h4>
+            <h4 class="quick-add-category">${uiCategory}</h4>
             <div class="quick-add-grid">`;
-        items.forEach((item, itemIdx) => {
-            const isCustom = itemIdx >= baseItems.length;
+
+        allItems.forEach(item => {
             const alreadyIn = currentShoppingIngredients.some(s => s.name === item.name && s.section !== 'stock');
             const currentQty = alreadyIn ? currentShoppingIngredients.find(s => s.name === item.name && s.section !== 'stock')?.quantity : null;
-            html += `<div class="quick-add-item-wrapper ${isCustom ? 'is-custom' : ''}">
+            html += `<div class="quick-add-item-wrapper ${item.isCustom ? 'is-custom' : ''}">
                 <button class="quick-add-item ${alreadyIn ? 'already-added' : ''}"
-                    data-name="${item.name}" data-qty="${item.quantity}" data-unit="${item.unit}" data-cat="${item.category}">
+                    data-name="${item.name}" data-qty="${item.quantity}" data-unit="${item.unit}" data-cat="${uiCategory}">
                     <span class="quick-add-item-label">${item.name}</span>
                     ${alreadyIn ? `<span class="quick-add-check">✓</span><input type="number" class="quick-add-inline-qty" value="${currentQty}" min="0.1" step="0.1">` : ''}
                 </button>
-                ${isCustom ? `<button class="quick-add-delete-btn" data-name="${item.name}" data-cat="${category}" title="Supprimer">×</button>` : ''}
+                ${item.isCustom ? `<button class="quick-add-delete-btn" data-airtable-id="${item.id}" title="Supprimer">×</button>` : ''}
             </div>`;
         });
+
         html += `</div>
             <div class="quick-add-custom-row">
-                <input type="text" class="quick-add-custom-name" placeholder="Autre produit..." data-cat="${category}">
-                <select class="quick-add-custom-unit">
-                    <option value="pièce">pièce</option>
-                    <option value="g">g</option>
-                    <option value="kg">kg</option>
-                    <option value="L">L</option>
-                    <option value="ml">ml</option>
-                    <option value="cl">cl</option>
-                    <option value="bouteille">bouteille</option>
-                    <option value="paquet">paquet</option>
-                    <option value="boîte">boîte</option>
-                    <option value="pot">pot</option>
-                    <option value="rouleau">rouleau</option>
-                    <option value="flacon">flacon</option>
-                </select>
-                <button class="quick-add-custom-btn" data-cat="${category}">＋</button>
+                <input type="text" class="quick-add-custom-name" placeholder="Autre produit..." data-cat="${uiCategory}">
+                <select class="quick-add-custom-unit">${unitOptions}</select>
+                <button class="quick-add-custom-btn" data-cat="${uiCategory}">＋</button>
             </div>
         </div>`;
     });
 
     body.innerHTML = html;
-    popup.classList.add('active');
 
     // Bouton "Depuis les recettes"
     document.getElementById('openRecipeIngredientsBtn')?.addEventListener('click', () => {
@@ -2853,7 +2868,6 @@ function openQuickAddPopup() {
     // Clics sur les items
     body.querySelectorAll('.quick-add-item').forEach(btn => {
         btn.addEventListener('click', e => {
-            // Ne pas déclencher si on clique sur l'input qty
             if (e.target.classList.contains('quick-add-inline-qty')) return;
             e.stopPropagation();
             const name = btn.dataset.name;
@@ -2863,13 +2877,11 @@ function openQuickAddPopup() {
             const existing = currentShoppingIngredients.find(s => s.name === name && s.unit === unit && s.section !== 'stock');
 
             if (btn.classList.contains('already-added')) {
-                // Retirer
                 if (existing) currentShoppingIngredients.splice(currentShoppingIngredients.indexOf(existing), 1);
                 btn.classList.remove('already-added');
                 btn.querySelector('.quick-add-check')?.remove();
                 btn.querySelector('.quick-add-inline-qty')?.remove();
             } else {
-                // Ajouter
                 currentShoppingIngredients.push({ name, quantity: qty, unit, category: cat, section: 'main' });
                 btn.classList.add('already-added');
                 btn.insertAdjacentHTML('beforeend', `<span class="quick-add-check">✓</span><input type="number" class="quick-add-inline-qty" value="${qty}" min="0.1" step="0.1">`);
@@ -2887,49 +2899,57 @@ function openQuickAddPopup() {
         });
     });
 
-    // Ajouter produit custom
+    // Ajouter produit custom → Airtable
     body.querySelectorAll('.quick-add-custom-btn').forEach(btn => {
         const row = btn.closest('.quick-add-custom-row');
-        const doAdd = () => {
+        const doAdd = async () => {
             const nameInput = row.querySelector('.quick-add-custom-name');
             const unitSelect = row.querySelector('.quick-add-custom-unit');
             const name = nameInput.value.trim();
             const unit = unitSelect.value;
-            const cat = btn.dataset.cat;
+            const uiCat = btn.dataset.cat;
+            const airtableCat = uiCatToAirtableCat(uiCat);
             if (!name) return;
-            currentShoppingIngredients.push({ name, quantity: 1, unit, category: cat, section: 'main' });
-            displayRawShoppingList(currentShoppingIngredients);
-            saveCurrentIngredients();
-            // Sauvegarder en localStorage
+            btn.disabled = true;
+            btn.textContent = '…';
             try {
-                const stored = JSON.parse(localStorage.getItem('customQuickAddItems') || '{}');
-                if (!stored[cat]) stored[cat] = [];
-                if (!stored[cat].find(i => i.name === name)) {
-                    stored[cat].push({ name, quantity: 1, unit, category: cat });
-                    localStorage.setItem('customQuickAddItems', JSON.stringify(stored));
+                const resp = await fetch(`${API_URL}/api/quick-items`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, quantity: 1, unit, category: airtableCat })
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    // Ajouter aussi à la liste de courses
+                    currentShoppingIngredients.push({ name, quantity: 1, unit, category: uiCat, section: 'main' });
+                    displayRawShoppingList(currentShoppingIngredients);
+                    saveCurrentIngredients();
+                    nameInput.value = '';
+                    openQuickAddPopup(); // Re-render avec nouveaux items
                 }
-            } catch(ex) {}
-            nameInput.value = '';
-            openQuickAddPopup(); // Re-render to show new item
+            } catch(ex) {
+                console.error('Failed to save quick item:', ex);
+                btn.disabled = false;
+                btn.textContent = '＋';
+            }
         };
         btn.addEventListener('click', doAdd);
         row.querySelector('.quick-add-custom-name').addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
     });
 
-    // Supprimer un item custom
+    // Supprimer item custom → Airtable
     body.querySelectorAll('.quick-add-delete-btn').forEach(btn => {
-        btn.addEventListener('click', e => {
+        btn.addEventListener('click', async e => {
             e.stopPropagation();
-            const name = btn.dataset.name;
-            const cat = btn.dataset.cat;
+            const airtableId = btn.dataset.airtableId;
+            btn.textContent = '…';
             try {
-                const stored = JSON.parse(localStorage.getItem('customQuickAddItems') || '{}');
-                if (stored[cat]) {
-                    stored[cat] = stored[cat].filter(i => i.name !== name);
-                    localStorage.setItem('customQuickAddItems', JSON.stringify(stored));
-                }
-            } catch(ex) {}
-            openQuickAddPopup(); // Re-render
+                await fetch(`${API_URL}/api/quick-items/${airtableId}`, { method: 'DELETE' });
+                openQuickAddPopup(); // Re-render
+            } catch(ex) {
+                console.error('Failed to delete quick item:', ex);
+                btn.textContent = '×';
+            }
         });
     });
 }
