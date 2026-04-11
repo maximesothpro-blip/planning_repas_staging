@@ -2658,6 +2658,8 @@ function getQuantityStep(unit) {
 
 // Display raw JSON in shopping tab (render only — interactions handled by initShoppingEventDelegation)
 function displayRawShoppingList(ingredientsInput) {
+    if (!ingredientsInput) ingredientsInput = [];
+
     // Initialiser section si manquante + stocker en global pour la délégation
     ingredientsInput.forEach(ing => {
         if (!ing.section) ing.section = (ing.category === 'Épicerie') ? 'stock' : 'main';
@@ -2722,6 +2724,10 @@ function displayRawShoppingList(ingredientsInput) {
         stockHtml += '</ul></div>';
     }
 
+    const emptyMsg = mainItems.length === 0 && stockItems.length === 0
+        ? `<p class="empty-shopping">Aucun ingrédient — ajoutez des repas au planning ou utilisez ⚡ Rapide</p>`
+        : '';
+
     const html = `
         <div class="shopping-list-header">
             <h3>${dateRange}</h3>
@@ -2730,6 +2736,7 @@ function displayRawShoppingList(ingredientsInput) {
                 <button class="shopping-copy-btn" title="Copier la liste">📋</button>
             </div>
         </div>
+        ${emptyMsg}
         <div class="shopping-list">${mainHtml}</div>
         ${stockHtml}
     `;
