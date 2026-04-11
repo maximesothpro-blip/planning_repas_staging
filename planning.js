@@ -2798,7 +2798,7 @@ function openQuickAddPopup() {
     let customItems = {};
     try { customItems = JSON.parse(localStorage.getItem('customQuickAddItems') || '{}'); } catch(e) {}
 
-    let html = `<button class="recipe-ingredients-btn" id="openRecipeIngredientsBtn">📖 Depuis les recettes</button>`;
+    let html = `<button class="recipe-ingredients-btn" id="openRecipeIngredientsBtn">📖 Ajouter aliments présents dans les recettes</button>`;
 
     Object.entries(QUICK_ADD_ITEMS).forEach(([category, baseItems]) => {
         const extra = customItems[category] || [];
@@ -2982,8 +2982,9 @@ function openRecipeIngredientsPopup() {
     searchInput.value = '';
     searchInput.oninput = () => renderList(searchInput.value);
     popup.classList.add('active');
-    document.getElementById('closeRecipeIngredientsPopup').onclick = () => popup.classList.remove('active');
-    popup.onclick = (e) => { if (e.target === popup) popup.classList.remove('active'); };
+    const closeAndBack = () => { popup.classList.remove('active'); openQuickAddPopup(); };
+    document.getElementById('closeRecipeIngredientsPopup').onclick = closeAndBack;
+    popup.onclick = (e) => { if (e.target === popup) closeAndBack(); };
 }
 
 // Initialiser les interactions shopping par délégation (une seule fois au démarrage)
