@@ -3684,12 +3684,21 @@ function closeChatPopup() {
     document.getElementById('chatPopup').classList.remove('active');
 }
 
+const CHAT_WELCOME_HTML = `
+    Dis-moi comment tu veux manger cette semaine 🍽️<br><br>
+    <strong>Quelques idées :</strong><br>
+    💪 <em>Une semaine full protéines</em><br>
+    🥗 <em>Le plus healthy possible</em><br>
+    💸 <em>Budget serré cette semaine</em><br>
+    🌍 <em>Voyage culinaire, on change de cuisine</em><br><br>
+    Je connais tes recettes et tes dernières semaines pour éviter les répétitions !`;
+
 function resetChat() {
     chatHistory = [];
     const messages = document.getElementById('chatMessages');
     messages.innerHTML = `
         <div class="chat-message assistant">
-            <div class="chat-bubble">Bonjour ! Je suis ton assistant repas 🍽️<br>Je peux t'aider à <strong>créer une recette</strong> ou à <strong>planifier ta semaine</strong>. Dis-moi ce que tu veux !</div>
+            <div class="chat-bubble">${CHAT_WELCOME_HTML}</div>
         </div>`;
 }
 
@@ -3747,16 +3756,6 @@ async function sendChatMessage() {
         chatHistory.push({ role: 'assistant', content: replyText });
 
         let bubbleHtml = replyText.replace(/\n/g, '<br>');
-
-        // Action: create recipe
-        if (data.action === 'create_recipe') {
-            bubbleHtml += `<br><button class="chat-action-btn" onclick="closeChatPopup(); document.getElementById('createRecipeBtn') && document.getElementById('createRecipeBtn').click();">✨ Créer une recette</button>`;
-        }
-        // Action: plan week
-        if (data.action === 'plan_week') {
-            bubbleHtml += `<br><button class="chat-action-btn" onclick="closeChatPopup(); showNotification('Planification automatique à venir !');">📅 Planifier la semaine</button>`;
-        }
-
         appendChatMessage('assistant', bubbleHtml);
 
     } catch (err) {
