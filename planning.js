@@ -90,6 +90,7 @@ async function init() {
     await loadShoppingListOnStartup();
     initShoppingEventDelegation();
     setupEventListeners();
+    resetChat(); // Injecte le message de bienvenue du chat
 }
 
 // ===== HELPER: Get Monday and Sunday from week number =====
@@ -3675,31 +3676,397 @@ modifyRecipeForm.addEventListener('submit', async (e) => {
 // ===== CHAT IA =====
 let chatHistory = [];
 let chatIsLoading = false;
+let selectedStyles = [];
+let forcedRecipes = []; // [{id, name}]
+let proposedPlanning = null;
+let chatOverlayEl = null;
 
+const CHAT_STYLES = [
+    { key: 'Healthy',      label: '🥗 Healthy',     hint: 'Légumes, équilibré, régime' },
+    { key: 'Prot',         label: '💪 Prot',         hint: 'Sport, protéines, muscles' },
+    { key: 'Pas cher',     label: '💸 Pas cher',     hint: 'Budget serré, simple' },
+    { key: 'Fancy',        label: '✨ Fancy',         hint: 'Repas stylés, gastronomique' },
+    { key: 'Challengeant', label: '🎯 Challenge',    hint: 'Nouvelles recettes, sortir de sa zone' },
+    { key: 'Confort',      label: '🏠 Confort',      hint: 'Plats simples et habituels' },
+    { key: 'Réconfort',    label: '🤗 Réconfort',    hint: 'Bons plats qui font plaisir' }
+];
+
+function buildWelcomeHTML() {
+    const styleBtns = CHAT_STYLES.map(s =>
+        `<button class="chat-style-btn" data-style="${s.key}" title="${s.hint}">
+            ${s.label}<span class="style-eye" data-style="${s.key}">👁</span>
+        </button>`
+    ).join('');
+
+    return `
+        <div class="chat-welcome-intro">Comment tu veux manger cette semaine ?</div>
+        <div class="chat-style-grid">${styleBtns}</div>
+        <div class="chat-week-history">
+            <div class="chat-week-label">Semaines passées :</div>
+            <div class="chat-week-btns" id="chatWeekBtns"><span class="chat-week-loading">chargement...</span></div>
+        </div>
+        <div class="chat-generate-wrap" id="chatGenerateWrap" style="display:none;">
+            <button class="chat-generate-btn" id="chatGenerateBtn">✨ Générer le planning</button>
+        </div>`;
+}
+
+async function initChatWeekHistory() {
+    const container = document.getElementById('chatWeekBtns');
+    if (!container) return;
+
+    const weeks = [];
+    let w = currentWeek, y = currentYear;
+    for (let i = 0; i < 4; i++) {
+        w--;
+        if (w < 1) { w = 52; y--; }
+        weeks.push({ week: w, year: y });
+    }
+
+    container.innerHTML = weeks.map(({ week, year }) => {
+        const { monday } = getWeekDates(week, year);
+        const d = new Date(monday);
+        const day = d.getDate();
+        const month = d.toLocaleDateString('fr-FR', { month: 'short' });
+        return `<button class="chat-week-btn" data-week="${week}" data-year="${year}">Sem. ${week} <span>${day} ${month}</span></button>`;
+    }).join('');
+}
+
+async function showWeekPopup(week, year) {
+    showChatOverlay(`<h3>Semaine ${week}</h3><p class="chat-overlay-loading">Chargement...</p>`);
+    try {
+        const res = await fetch(`${window.BACKEND_API_URL}/api/planning?week=${week}&year=${year}`);
+        const data = await res.json();
+        const planningEntries = data.planning || [];
+
+        if (!planningEntries.length) {
+            updateChatOverlay(`<h3>Semaine ${week}</h3><p>Aucun repas planifié cette semaine.</p>`);
+            return;
+        }
+
+        const days = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+        const byDay = {};
+        planningEntries.forEach(entry => {
+            if (!byDay[entry.day]) byDay[entry.day] = {};
+            const recipeId = Array.isArray(entry.recipe) ? entry.recipe[0] : entry.recipe;
+            const recipeName = recipes.find(r => r.id === recipeId)?.name || '?';
+            byDay[entry.day][entry.meal] = recipeName;
+        });
+
+        const rows = days.map(day => {
+            const dej = byDay[day]?.['Déjeuner'] || '';
+            const din = byDay[day]?.['Dîner'] || '';
+            if (!dej && !din) return '';
+            return `<div class="week-popup-row">
+                <div class="week-popup-day">${day}</div>
+                <div class="week-popup-meals">
+                    ${dej ? `<span>🍽️ ${dej}</span>` : ''}
+                    ${din ? `<span>🌙 ${din}</span>` : ''}
+                </div>
+            </div>`;
+        }).filter(Boolean).join('');
+
+        updateChatOverlay(`<h3>Semaine ${week}</h3><div class="week-popup-rows">${rows}</div>`);
+    } catch(e) {
+        updateChatOverlay(`<h3>Semaine ${week}</h3><p>Erreur de chargement.</p>`);
+    }
+}
+
+async function showStylePreview(styleKey) {
+    const style = CHAT_STYLES.find(s => s.key === styleKey);
+    showChatOverlay(`<h3>${style?.label || styleKey}</h3><p class="chat-overlay-loading">Chargement des recettes...</p>`);
+    try {
+        const res = await fetch(`${window.BACKEND_API_URL}/api/recipes/by-tag/${encodeURIComponent(styleKey)}`);
+        const data = await res.json();
+
+        if (!data.recipes?.length) {
+            updateChatOverlay(`<h3>${style?.label || styleKey}</h3><p>Aucune recette avec ce tag pour l'instant.<br><em>Les recettes sont taguées lors de leur création.</em></p>`);
+            return;
+        }
+
+        const items = data.recipes.map(r =>
+            `<div class="style-preview-item">
+                <strong>${r.name}</strong>
+                ${r.description ? `<span>${r.description}</span>` : ''}
+            </div>`
+        ).join('');
+
+        updateChatOverlay(`<h3>${style?.label || styleKey}</h3><div class="style-preview-list">${items}</div>`);
+    } catch(e) {
+        updateChatOverlay(`<h3>${style?.label || styleKey}</h3><p>Erreur de chargement.</p>`);
+    }
+}
+
+function showChatOverlay(html) {
+    if (chatOverlayEl) chatOverlayEl.remove();
+    chatOverlayEl = document.createElement('div');
+    chatOverlayEl.className = 'chat-overlay';
+    chatOverlayEl.innerHTML = `
+        <div class="chat-overlay-content">
+            <button class="chat-overlay-close">×</button>
+            <div class="chat-overlay-body">${html}</div>
+        </div>`;
+    chatOverlayEl.querySelector('.chat-overlay-close').addEventListener('click', () => {
+        chatOverlayEl.remove(); chatOverlayEl = null;
+    });
+    chatOverlayEl.addEventListener('click', e => {
+        if (e.target === chatOverlayEl) { chatOverlayEl.remove(); chatOverlayEl = null; }
+    });
+    document.getElementById('chatPopup').appendChild(chatOverlayEl);
+}
+
+function updateChatOverlay(html) {
+    if (!chatOverlayEl) return showChatOverlay(html);
+    chatOverlayEl.querySelector('.chat-overlay-body').innerHTML = html;
+}
+
+function toggleStyleSelection(styleKey) {
+    const idx = selectedStyles.indexOf(styleKey);
+    if (idx === -1) selectedStyles.push(styleKey);
+    else selectedStyles.splice(idx, 1);
+
+    document.querySelectorAll(`.chat-style-btn[data-style="${styleKey}"]`).forEach(btn => {
+        btn.classList.toggle('active', selectedStyles.includes(styleKey));
+    });
+    updateGenerateBtn();
+}
+
+function updateGenerateBtn() {
+    const wrap = document.getElementById('chatGenerateWrap');
+    if (!wrap) return;
+    const visible = selectedStyles.length > 0 || forcedRecipes.length > 0;
+    wrap.style.display = visible ? 'block' : 'none';
+    const btn = document.getElementById('chatGenerateBtn');
+    if (btn) btn.textContent = proposedPlanning ? '🔄 Regénérer le planning' : '✨ Générer le planning';
+}
+
+// --- Forced recipes dropdown ---
+let forcedRecipesInited = false;
+function initForcedRecipesSelector() {
+    if (forcedRecipesInited) return;
+    forcedRecipesInited = true;
+
+    const input = document.getElementById('chatRecipeSearch');
+    const dropdown = document.getElementById('chatRecipeDropdown');
+    if (!input || !dropdown) return;
+
+    input.addEventListener('input', () => {
+        const q = input.value.trim().toLowerCase();
+        if (!q) { dropdown.style.display = 'none'; return; }
+
+        const filtered = recipes.filter(r =>
+            r.name.toLowerCase().includes(q) && !forcedRecipes.find(f => f.id === r.id)
+        ).slice(0, 8);
+
+        if (!filtered.length) { dropdown.style.display = 'none'; return; }
+
+        dropdown.innerHTML = filtered.map(r =>
+            `<div class="chat-recipe-option" data-id="${r.id}" data-name="${encodeURIComponent(r.name)}">${r.name}</div>`
+        ).join('');
+        dropdown.style.display = 'block';
+    });
+
+    dropdown.addEventListener('click', e => {
+        const opt = e.target.closest('.chat-recipe-option');
+        if (!opt) return;
+        addForcedRecipe(opt.dataset.id, decodeURIComponent(opt.dataset.name));
+        input.value = '';
+        dropdown.style.display = 'none';
+    });
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('#chatContextBar')) dropdown.style.display = 'none';
+    });
+}
+
+function addForcedRecipe(id, name) {
+    if (forcedRecipes.find(r => r.id === id)) return;
+    forcedRecipes.push({ id, name });
+    renderForcedChips();
+    updateGenerateBtn();
+}
+
+function removeForcedRecipe(id) {
+    forcedRecipes = forcedRecipes.filter(r => r.id !== id);
+    renderForcedChips();
+    updateGenerateBtn();
+}
+
+function renderForcedChips() {
+    const container = document.getElementById('chatForcedChips');
+    if (!container) return;
+    container.innerHTML = forcedRecipes.map(r =>
+        `<span class="chat-forced-chip">${r.name}<button class="chip-remove" data-id="${r.id}">×</button></span>`
+    ).join('');
+    container.querySelectorAll('.chip-remove').forEach(btn => {
+        btn.addEventListener('click', () => removeForcedRecipe(btn.dataset.id));
+    });
+}
+
+// --- Génération planning ---
+async function generatePlanning() {
+    if (chatIsLoading) return;
+
+    const promptInput = document.getElementById('chatInput');
+    const prompt = promptInput.value.trim();
+
+    const parts = [];
+    if (selectedStyles.length) parts.push(`Styles : ${selectedStyles.join(', ')}`);
+    if (forcedRecipes.length) parts.push(`Recettes imposées : ${forcedRecipes.map(r => r.name).join(', ')}`);
+    if (prompt) parts.push(prompt);
+
+    const userMsg = parts.join(' · ') || 'Génère un planning pour cette semaine';
+
+    promptInput.value = '';
+    promptInput.style.height = 'auto';
+    chatIsLoading = true;
+    document.getElementById('chatSendBtn').disabled = true;
+
+    appendChatMessage('user', userMsg);
+    chatHistory.push({ role: 'user', content: userMsg });
+    showChatTyping();
+
+    try {
+        const res = await fetch(`${window.BACKEND_API_URL}/api/generate-planning`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                styles: selectedStyles,
+                forcedRecipes,
+                prompt,
+                currentWeek,
+                currentYear,
+                history: chatHistory.slice(-10)
+            })
+        });
+
+        const data = await res.json();
+        removeChatTyping();
+
+        if (data.planning) {
+            proposedPlanning = data.planning;
+            const messageHtml = (data.message || '').replace(/\n/g, '<br>');
+            renderPlanningProposal(data.planning, messageHtml);
+            chatHistory.push({ role: 'assistant', content: data.message || 'Voici le planning proposé.' });
+            updateGenerateBtn();
+        } else {
+            const replyText = data.message || data.error || 'Je n\'ai pas pu générer de planning.';
+            appendChatMessage('assistant', replyText.replace(/\n/g, '<br>'));
+            chatHistory.push({ role: 'assistant', content: replyText });
+        }
+    } catch(err) {
+        removeChatTyping();
+        console.error('❌ Generate planning error:', err);
+        appendChatMessage('assistant', 'Erreur de connexion 😕 Réessaie dans un instant.');
+    }
+
+    chatIsLoading = false;
+    document.getElementById('chatSendBtn').disabled = false;
+}
+
+function renderPlanningProposal(planning, messageHtml) {
+    const days = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+    const dayLabels = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+
+    const rows = days.map((day, i) => {
+        const entry = planning[day];
+        if (!entry) return '';
+        const dej = entry.dejeuner?.name || '—';
+        const din = entry.diner?.name || '—';
+        return `<div class="planning-proposal-row">
+            <div class="planning-proposal-day">${dayLabels[i]}</div>
+            <div class="planning-proposal-meals">
+                <div>🍽️ ${dej}</div>
+                <div>🌙 ${din}</div>
+            </div>
+        </div>`;
+    }).filter(Boolean).join('');
+
+    const bubble = `
+        ${messageHtml ? `<div class="planning-proposal-msg">${messageHtml}</div>` : ''}
+        <div class="planning-proposal-table">${rows}</div>
+        <div class="planning-proposal-actions">
+            <button class="chat-accept-btn" id="chatAcceptBtn">✅ Accepter le planning</button>
+        </div>`;
+
+    appendChatMessage('assistant', bubble);
+}
+
+async function acceptProposedPlanning() {
+    if (!proposedPlanning) return;
+
+    const btn = document.getElementById('chatAcceptBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ En cours...'; }
+
+    const days = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+    const dayLabels = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+    const { monday } = getWeekDates(currentWeek, currentYear);
+
+    const entries = [];
+    days.forEach((day, i) => {
+        const entry = proposedPlanning[day];
+        if (!entry) return;
+        const date = new Date(monday);
+        date.setDate(date.getDate() + i);
+        const dateStr = date.toISOString().split('T')[0];
+
+        if (entry.dejeuner?.id) {
+            entries.push({ day: dayLabels[i], date: dateStr, meal: 'Déjeuner', recipeId: entry.dejeuner.id, week: currentWeek, year: currentYear, servings: 2 });
+        }
+        if (entry.diner?.id) {
+            entries.push({ day: dayLabels[i], date: dateStr, meal: 'Dîner', recipeId: entry.diner.id, week: currentWeek, year: currentYear, servings: 2 });
+        }
+    });
+
+    try {
+        const res = await fetch(`${window.BACKEND_API_URL}/api/planning/bulk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entries })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            if (btn) { btn.textContent = '✅ Ajouté !'; }
+            appendChatMessage('assistant', `🎉 ${data.created} repas ajoutés à ta semaine ! Le planning se met à jour...`);
+            proposedPlanning = null;
+            await loadPlanning();
+        } else {
+            if (btn) { btn.disabled = false; btn.textContent = '✅ Accepter le planning'; }
+            appendChatMessage('assistant', 'Erreur lors de l\'ajout au planning 😕');
+        }
+    } catch(e) {
+        if (btn) { btn.disabled = false; btn.textContent = '✅ Accepter le planning'; }
+        appendChatMessage('assistant', 'Erreur de connexion 😕');
+    }
+}
+
+// --- Core chat functions ---
 function openChatPopup() {
     document.getElementById('chatPopup').classList.add('active');
+    initForcedRecipesSelector();
+    initChatWeekHistory();
 }
 
 function closeChatPopup() {
     document.getElementById('chatPopup').classList.remove('active');
 }
 
-const CHAT_WELCOME_HTML = `
-    Dis-moi comment tu veux manger cette semaine 🍽️<br><br>
-    <strong>Quelques idées :</strong><br>
-    💪 <em>Une semaine full protéines</em><br>
-    🥗 <em>Le plus healthy possible</em><br>
-    💸 <em>Budget serré cette semaine</em><br>
-    🌍 <em>Voyage culinaire, on change de cuisine</em><br><br>
-    Je connais tes recettes et tes dernières semaines pour éviter les répétitions !`;
-
 function resetChat() {
     chatHistory = [];
+    selectedStyles = [];
+    forcedRecipes = [];
+    proposedPlanning = null;
+    forcedRecipesInited = false;
+    renderForcedChips();
+
     const messages = document.getElementById('chatMessages');
     messages.innerHTML = `
         <div class="chat-message assistant">
-            <div class="chat-bubble">${CHAT_WELCOME_HTML}</div>
+            <div class="chat-bubble">${buildWelcomeHTML()}</div>
         </div>`;
+
+    updateGenerateBtn();
+    initChatWeekHistory();
 }
 
 function appendChatMessage(role, html) {
@@ -3754,9 +4121,7 @@ async function sendChatMessage() {
 
         const replyText = data.message || 'Je n\'ai pas pu répondre, réessaie.';
         chatHistory.push({ role: 'assistant', content: replyText });
-
-        let bubbleHtml = replyText.replace(/\n/g, '<br>');
-        appendChatMessage('assistant', bubbleHtml);
+        appendChatMessage('assistant', replyText.replace(/\n/g, '<br>'));
 
     } catch (err) {
         removeChatTyping();
@@ -3768,12 +4133,54 @@ async function sendChatMessage() {
     document.getElementById('chatSendBtn').disabled = false;
 }
 
+// --- Event delegation sur chatMessages (boutons dynamiques) ---
+document.getElementById('chatMessages').addEventListener('click', e => {
+    // Style btn (pas l'icône 👁)
+    const styleBtn = e.target.closest('.chat-style-btn');
+    if (styleBtn && !e.target.classList.contains('style-eye')) {
+        toggleStyleSelection(styleBtn.dataset.style);
+        return;
+    }
+    // Icône preview 👁
+    const eyeIcon = e.target.closest('.style-eye');
+    if (eyeIcon) {
+        showStylePreview(eyeIcon.dataset.style);
+        return;
+    }
+    // Bouton semaine passée
+    const weekBtn = e.target.closest('.chat-week-btn');
+    if (weekBtn) {
+        showWeekPopup(+weekBtn.dataset.week, +weekBtn.dataset.year);
+        return;
+    }
+    // Bouton générer
+    if (e.target.id === 'chatGenerateBtn') {
+        generatePlanning();
+        return;
+    }
+    // Bouton accepter planning
+    if (e.target.id === 'chatAcceptBtn') {
+        acceptProposedPlanning();
+        return;
+    }
+});
+
 // Chat event listeners
 document.getElementById('chatFab').addEventListener('click', openChatPopup);
 document.getElementById('closeChatPopup').addEventListener('click', closeChatPopup);
 document.getElementById('chatNewBtn').addEventListener('click', resetChat);
-
 document.getElementById('chatSendBtn').addEventListener('click', sendChatMessage);
+
+document.getElementById('chatPinBtn').addEventListener('click', () => {
+    const bar = document.getElementById('chatContextBar');
+    const isVisible = bar.style.display !== 'none';
+    bar.style.display = isVisible ? 'none' : 'block';
+    document.getElementById('chatPinBtn').classList.toggle('active', !isVisible);
+    if (!isVisible) {
+        initForcedRecipesSelector();
+        document.getElementById('chatRecipeSearch')?.focus();
+    }
+});
 
 document.getElementById('chatInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -3782,7 +4189,6 @@ document.getElementById('chatInput').addEventListener('keydown', (e) => {
     }
 });
 
-// Auto-resize textarea
 document.getElementById('chatInput').addEventListener('input', function() {
     this.style.height = 'auto';
     this.style.height = Math.min(this.scrollHeight, 100) + 'px';

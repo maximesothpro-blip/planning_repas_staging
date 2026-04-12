@@ -285,12 +285,20 @@
                 </div>
             </div>
             <div class="chat-messages" id="chatMessages">
-                <div class="chat-message assistant">
-                    <div class="chat-bubble">Dis-moi comment tu veux manger cette semaine 🍽️<br><br><strong>Quelques idées :</strong><br>💪 <em>Une semaine full protéines</em><br>🥗 <em>Le plus healthy possible</em><br>💸 <em>Budget serré cette semaine</em><br>🌍 <em>Voyage culinaire, on change de cuisine</em><br><br>Je connais tes recettes et tes dernières semaines pour éviter les répétitions !</div>
+                <!-- Message de bienvenue injecté par JS (resetChat) -->
+            </div>
+            <!-- Barre recettes imposées (toggle) -->
+            <div class="chat-context-bar" id="chatContextBar" style="display:none;">
+                <div class="chat-context-label">📌 Recettes à inclure cette semaine</div>
+                <div class="chat-recipe-selector">
+                    <input type="text" id="chatRecipeSearch" placeholder="Chercher une recette..." autocomplete="off" style="font-size:16px;">
+                    <div class="chat-recipe-dropdown" id="chatRecipeDropdown"></div>
                 </div>
+                <div class="chat-forced-chips" id="chatForcedChips"></div>
             </div>
             <div class="chat-input-area">
-                <textarea class="chat-input" id="chatInput" placeholder="Écris ton message..." rows="1"></textarea>
+                <button class="chat-pin-btn" id="chatPinBtn" title="Recettes imposées">📌</button>
+                <textarea class="chat-input" id="chatInput" placeholder="Décris tes envies ou donne ton avis..." rows="1" style="font-size:16px;"></textarea>
                 <button class="chat-send-btn" id="chatSendBtn">➤</button>
             </div>
         </div>
