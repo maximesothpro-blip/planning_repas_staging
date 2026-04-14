@@ -4180,6 +4180,9 @@ function openModProposalPopup() {
 function closeModProposalPopup() {
     document.getElementById('modProposalOverlay').style.display = 'none';
     refreshProposalDaysDisplay();
+    // Scroll vers le planning mis à jour
+    const list = document.getElementById('proposalDaysList');
+    if (list) list.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function switchModProposalTab(tab) {
