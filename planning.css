@@ -3523,6 +3523,169 @@ body {
     color: #6b7280;
 }
 
+/* ===== CHAT PARAMS (portions / leftovers) ===== */
+.chat-params-row {
+    display: flex;
+    gap: 12px;
+    margin: 10px 0 4px;
+    flex-wrap: wrap;
+}
+
+.chat-param-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.chat-param-label {
+    font-size: 11px;
+    color: #9ca3af;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.chat-param-btns {
+    display: flex;
+    gap: 4px;
+}
+
+.chat-param-btn {
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1.5px solid #e9d5ff;
+    background: #faf5ff;
+    color: #7c3aed;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.chat-param-btn:hover {
+    background: #ede9fe;
+    border-color: #c4b5fd;
+}
+
+.chat-param-btn.active {
+    background: #7c3aed;
+    border-color: #7c3aed;
+    color: #fff;
+}
+
+/* ===== CLARIFICATION ===== */
+.chat-clarification-text {
+    font-size: 14px;
+    color: #374151;
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+.chat-clarify-btns {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.chat-clarify-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1.5px solid #7c3aed;
+    background: #fff;
+    color: #7c3aed;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.chat-clarify-btn:hover {
+    background: #7c3aed;
+    color: #fff;
+}
+
+/* ===== MODIFY CHANGES ===== */
+.modify-changes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 10px 0 14px;
+}
+
+.modify-change-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #faf5ff;
+    border-radius: 8px;
+    border: 1px solid #ede9fe;
+    font-size: 13px;
+}
+
+.modify-change-day {
+    font-weight: 700;
+    color: #7c3aed;
+    min-width: 60px;
+    flex-shrink: 0;
+}
+
+.modify-change-recipe {
+    color: #374151;
+    line-height: 1.4;
+}
+
+/* ===== PROPOSAL CARD GRID ===== */
+.proposal-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 8px;
+    margin: 10px 0 14px;
+}
+
+.proposal-card {
+    background: #faf5ff;
+    border: 1px solid #ede9fe;
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.proposal-card-day {
+    font-size: 11px;
+    font-weight: 700;
+    color: #7c3aed;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #ede9fe;
+    padding-bottom: 5px;
+    margin-bottom: 2px;
+}
+
+.proposal-card-meal {
+    display: flex;
+    align-items: flex-start;
+    gap: 5px;
+    font-size: 12px;
+    color: #374151;
+    line-height: 1.3;
+}
+
+.proposal-card-meal.diner .proposal-meal-icon {
+    opacity: 0.7;
+}
+
+.proposal-meal-icon {
+    flex-shrink: 0;
+    font-size: 12px;
+}
+
+.proposal-meal-name {
+    color: #374151;
+}
+
 /* ===== CHAT MOBILE ===== */
 @media (max-width: 768px) {
     .chat-fab {

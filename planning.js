@@ -3679,7 +3679,11 @@ let chatIsLoading = false;
 let selectedStyles = [];
 let forcedRecipes = []; // [{id, name}]
 let proposedPlanning = null;
+let proposedChanges = null; // pour mode modify
 let chatOverlayEl = null;
+let selectedServings = 2;
+let selectedFrequency = 1;
+let pendingClarificationMessage = ''; // message en attente de clarification intent
 
 const CHAT_STYLES = [
     { key: 'Healthy',      label: '🥗 Healthy',     hint: 'Légumes, équilibré, régime' },
@@ -3701,6 +3705,20 @@ function buildWelcomeHTML() {
     return `
         <div class="chat-welcome-intro">Comment tu veux manger cette semaine ?</div>
         <div class="chat-style-grid">${styleBtns}</div>
+        <div class="chat-params-row">
+            <div class="chat-param-group">
+                <div class="chat-param-label">👥 Portions</div>
+                <div class="chat-param-btns">
+                    ${[1,2,3,4].map(v => `<button class="chat-param-btn${v===selectedServings?' active':''}" data-param="servings" data-value="${v}">×${v}</button>`).join('')}
+                </div>
+            </div>
+            <div class="chat-param-group">
+                <div class="chat-param-label">🥡 Leftovers</div>
+                <div class="chat-param-btns">
+                    ${[1,2,3].map(v => `<button class="chat-param-btn${v===selectedFrequency?' active':''}" data-param="frequency" data-value="${v}">×${v}</button>`).join('')}
+                </div>
+            </div>
+        </div>
         <div class="chat-week-history">
             <div class="chat-week-label">Semaines passées :</div>
             <div class="chat-week-btns" id="chatWeekBtns"><span class="chat-week-loading">chargement...</span></div>
@@ -3902,26 +3920,30 @@ function renderForcedChips() {
     });
 }
 
-// --- Génération planning ---
-async function generatePlanning() {
+// --- Génération / modification planning ---
+async function generatePlanning(userIntent = null) {
     if (chatIsLoading) return;
 
     const promptInput = document.getElementById('chatInput');
     const prompt = promptInput.value.trim();
 
+    // Si clarification demandée, on utilise le message en attente
+    const effectivePrompt = pendingClarificationMessage || prompt;
+
     const parts = [];
     if (selectedStyles.length) parts.push(`Styles : ${selectedStyles.join(', ')}`);
     if (forcedRecipes.length) parts.push(`Recettes imposées : ${forcedRecipes.map(r => r.name).join(', ')}`);
-    if (prompt) parts.push(prompt);
+    if (effectivePrompt) parts.push(effectivePrompt);
 
     const userMsg = parts.join(' · ') || 'Génère un planning pour cette semaine';
 
     promptInput.value = '';
     promptInput.style.height = 'auto';
+    pendingClarificationMessage = '';
     chatIsLoading = true;
     document.getElementById('chatSendBtn').disabled = true;
 
-    appendChatMessage('user', userMsg);
+    if (!userIntent) appendChatMessage('user', userMsg);
     chatHistory.push({ role: 'user', content: userMsg });
     showChatTyping();
 
@@ -3932,9 +3954,12 @@ async function generatePlanning() {
             body: JSON.stringify({
                 styles: selectedStyles,
                 forcedRecipes,
-                prompt,
+                prompt: effectivePrompt,
                 currentWeek,
                 currentYear,
+                servings: selectedServings,
+                frequency: selectedFrequency,
+                userIntent,
                 history: chatHistory.slice(-10)
             })
         });
@@ -3942,12 +3967,28 @@ async function generatePlanning() {
         const data = await res.json();
         removeChatTyping();
 
-        if (data.planning) {
+        // Cas 1 : clarification requise
+        if (data.needsClarification) {
+            pendingClarificationMessage = effectivePrompt || userMsg;
+            renderClarificationMessage(data.message);
+            chatHistory.push({ role: 'assistant', content: data.message });
+
+        // Cas 2 : mode modify (changes)
+        } else if (data.mode === 'modify' && data.changes) {
+            proposedChanges = data.changes;
+            const messageHtml = (data.message || '').replace(/\n/g, '<br>');
+            renderModifyProposal(data.changes, messageHtml);
+            chatHistory.push({ role: 'assistant', content: data.message || 'Voici les modifications.' });
+
+        // Cas 3 : mode create (planning complet)
+        } else if (data.planning) {
             proposedPlanning = data.planning;
             const messageHtml = (data.message || '').replace(/\n/g, '<br>');
             renderPlanningProposal(data.planning, messageHtml);
             chatHistory.push({ role: 'assistant', content: data.message || 'Voici le planning proposé.' });
             updateGenerateBtn();
+
+        // Cas 4 : erreur ou message simple
         } else {
             const replyText = data.message || data.error || 'Je n\'ai pas pu générer de planning.';
             appendChatMessage('assistant', replyText.replace(/\n/g, '<br>'));
@@ -3963,27 +4004,119 @@ async function generatePlanning() {
     document.getElementById('chatSendBtn').disabled = false;
 }
 
+function renderClarificationMessage(msg) {
+    const bubble = `
+        <div class="chat-clarification-text">${msg}</div>
+        <div class="chat-clarify-btns">
+            <button class="chat-clarify-btn" data-intent="create">🆕 Créer un nouveau planning</button>
+            <button class="chat-clarify-btn" data-intent="modify">✏️ Modifier l'existant</button>
+        </div>`;
+    appendChatMessage('assistant', bubble);
+}
+
+function renderModifyProposal(changes, messageHtml) {
+    const deletes = changes.filter(c => c.action === 'delete').length;
+    const adds = changes.filter(c => c.action === 'add');
+
+    const addRows = adds.map(c =>
+        `<div class="modify-change-item">
+            <span class="modify-change-day">${c.day} ${c.meal}</span>
+            <span class="modify-change-recipe">→ ${c.recipeName}</span>
+        </div>`
+    ).join('');
+
+    const bubble = `
+        ${messageHtml ? `<div class="planning-proposal-msg">${messageHtml}</div>` : ''}
+        <div class="modify-changes-list">${addRows}</div>
+        <div class="planning-proposal-actions">
+            <button class="chat-accept-btn" id="chatAcceptModifyBtn">✅ Appliquer les changements</button>
+        </div>`;
+    appendChatMessage('assistant', bubble);
+}
+
+async function applyPlanningChanges() {
+    if (!proposedChanges) return;
+
+    const btn = document.getElementById('chatAcceptModifyBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ En cours...'; }
+
+    const { monday } = getWeekDates(currentWeek, currentYear);
+    const dayOffsets = { 'Lundi':0,'Mardi':1,'Mercredi':2,'Jeudi':3,'Vendredi':4,'Samedi':5,'Dimanche':6 };
+
+    try {
+        for (const change of proposedChanges) {
+            if (change.action === 'delete') {
+                await fetch(`${window.BACKEND_API_URL}/api/planning/${change.planningEntryId}`, { method: 'DELETE' });
+            } else if (change.action === 'add') {
+                const date = new Date(monday);
+                date.setDate(date.getDate() + (dayOffsets[change.day] || 0));
+                await fetch(`${window.BACKEND_API_URL}/api/planning`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        day: change.day,
+                        date: date.toISOString().split('T')[0],
+                        meal: change.meal,
+                        recipeId: change.recipeId,
+                        week: currentWeek,
+                        year: currentYear,
+                        servings: selectedServings
+                    })
+                });
+            }
+        }
+
+        if (btn) btn.textContent = '✅ Appliqué !';
+        appendChatMessage('assistant', '🎉 Planning mis à jour ! Rechargement...');
+        proposedChanges = null;
+        await fullRefresh();
+
+    } catch(e) {
+        if (btn) { btn.disabled = false; btn.textContent = '✅ Appliquer les changements'; }
+        appendChatMessage('assistant', 'Erreur lors de l\'application 😕');
+    }
+}
+
+async function fullRefresh() {
+    await loadPlanning();
+    displayPlanning();
+    showNotification('Planning mis à jour !');
+}
+
+function reinforceIntent(originalMessage, confirmedIntent) {
+    // Fire-and-forget — pas d'await
+    fetch(`${window.BACKEND_API_URL}/api/reinforce-intent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ originalMessage, confirmedIntent })
+    }).catch(() => {}); // silencieux
+}
+
 function renderPlanningProposal(planning, messageHtml) {
     const days = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
-    const dayLabels = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+    const dayLabels = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
 
-    const rows = days.map((day, i) => {
+    const cards = days.map((day, i) => {
         const entry = planning[day];
         if (!entry) return '';
         const dej = entry.dejeuner?.name || '—';
         const din = entry.diner?.name || '—';
-        return `<div class="planning-proposal-row">
-            <div class="planning-proposal-day">${dayLabels[i]}</div>
-            <div class="planning-proposal-meals">
-                <div>🍽️ ${dej}</div>
-                <div>🌙 ${din}</div>
+        return `<div class="proposal-card">
+            <div class="proposal-card-day">${dayLabels[i]}</div>
+            <div class="proposal-card-meal">
+                <span class="proposal-meal-icon">🍽️</span>
+                <span class="proposal-meal-name">${dej}</span>
+            </div>
+            <div class="proposal-card-meal diner">
+                <span class="proposal-meal-icon">🌙</span>
+                <span class="proposal-meal-name">${din}</span>
             </div>
         </div>`;
     }).filter(Boolean).join('');
 
     const bubble = `
         ${messageHtml ? `<div class="planning-proposal-msg">${messageHtml}</div>` : ''}
-        <div class="planning-proposal-table">${rows}</div>
+        <div class="proposal-cards-grid">${cards}</div>
         <div class="planning-proposal-actions">
             <button class="chat-accept-btn" id="chatAcceptBtn">✅ Accepter le planning</button>
         </div>`;
@@ -4027,9 +4160,9 @@ async function acceptProposedPlanning() {
 
         if (data.success) {
             if (btn) { btn.textContent = '✅ Ajouté !'; }
-            appendChatMessage('assistant', `🎉 ${data.created} repas ajoutés à ta semaine ! Le planning se met à jour...`);
+            appendChatMessage('assistant', `🎉 ${data.created} repas ajoutés à ta semaine ! Rechargement...`);
             proposedPlanning = null;
-            await loadPlanning();
+            await fullRefresh();
         } else {
             if (btn) { btn.disabled = false; btn.textContent = '✅ Accepter le planning'; }
             appendChatMessage('assistant', 'Erreur lors de l\'ajout au planning 😕');
@@ -4056,6 +4189,10 @@ function resetChat() {
     selectedStyles = [];
     forcedRecipes = [];
     proposedPlanning = null;
+    proposedChanges = null;
+    pendingClarificationMessage = '';
+    selectedServings = 2;
+    selectedFrequency = 1;
     forcedRecipesInited = false;
     renderForcedChips();
 
@@ -4153,14 +4290,43 @@ document.getElementById('chatMessages').addEventListener('click', e => {
         showWeekPopup(+weekBtn.dataset.week, +weekBtn.dataset.year);
         return;
     }
+    // Boutons portions / frequency
+    const paramBtn = e.target.closest('.chat-param-btn');
+    if (paramBtn) {
+        const param = paramBtn.dataset.param;
+        const value = +paramBtn.dataset.value;
+        if (param === 'servings') selectedServings = value;
+        else if (param === 'frequency') selectedFrequency = value;
+        document.querySelectorAll(`.chat-param-btn[data-param="${param}"]`).forEach(btn => {
+            btn.classList.toggle('active', +btn.dataset.value === value);
+        });
+        return;
+    }
     // Bouton générer
     if (e.target.id === 'chatGenerateBtn') {
         generatePlanning();
         return;
     }
-    // Bouton accepter planning
+    // Bouton accepter planning (create)
     if (e.target.id === 'chatAcceptBtn') {
         acceptProposedPlanning();
+        return;
+    }
+    // Bouton appliquer changements (modify)
+    if (e.target.id === 'chatAcceptModifyBtn') {
+        applyPlanningChanges();
+        return;
+    }
+    // Boutons clarification intent
+    const clarifyBtn = e.target.closest('.chat-clarify-btn');
+    if (clarifyBtn) {
+        const intent = clarifyBtn.dataset.intent;
+        // Désactiver les 2 boutons
+        clarifyBtn.closest('.chat-clarify-btns')?.querySelectorAll('.chat-clarify-btn').forEach(b => b.disabled = true);
+        // Fire-and-forget reinforcement
+        reinforceIntent(pendingClarificationMessage, intent);
+        // Relancer avec l'intent confirmé
+        generatePlanning(intent);
         return;
     }
 });
