@@ -305,6 +305,24 @@
     </div>
     <button class="chat-fab" id="chatFab" title="Assistant IA">💬</button>
 
+    <!-- Popup Modifier Planning Proposé -->
+    <div class="mod-proposal-overlay" id="modProposalOverlay" style="display:none">
+        <div class="mod-proposal-popup">
+            <div class="mod-proposal-header">
+                <h3>✏️ Modifier le planning proposé</h3>
+                <button class="mod-proposal-close" id="closeModProposalBtn">×</button>
+            </div>
+            <div class="mod-proposal-tabs">
+                <button class="mod-tab-btn active" data-tab="manual">📋 Manuel</button>
+                <button class="mod-tab-btn" data-tab="ai">🤖 Chat IA</button>
+            </div>
+            <div class="mod-proposal-content" id="modProposalContent"></div>
+            <div class="mod-proposal-footer">
+                <button class="proposal-act-btn accept" id="applyModProposalBtn">✅ Appliquer les changements</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Popup Ingrédients des Recettes -->
     <div class="quick-add-popup" id="recipeIngredientsPopup">
         <div class="quick-add-popup-content">
@@ -328,7 +346,7 @@
     </div>
 
     <!-- Version -->
-    <div class="version-info">Staging v2.13 - Chat unifié generate-planning, fix userIntent/servings/frequency backend - 14/04/2026</div>
+    <div class="version-info">Staging v2.14 - Chat unifié generate-planning, fix userIntent/servings/frequency backend - 14/04/2026</div>
 
     <script src="config.js"></script>
     <script src="planning.js"></script>

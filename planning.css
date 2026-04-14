@@ -3388,30 +3388,292 @@ body {
 }
 
 .planning-proposal-actions {
-    margin-top: 4px;
+    margin-top: 10px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
-.chat-accept-btn {
-    width: 100%;
-    padding: 8px 14px;
+/* Boutons d'action de la proposition */
+.proposal-act-btn {
+    flex: 1;
+    min-width: 80px;
+    padding: 8px 10px;
     border-radius: 10px;
     border: none;
-    background: #22c55e;
-    color: white;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+}
+.proposal-act-btn:hover { opacity: 0.88; transform: translateY(-1px); }
+.proposal-act-btn:disabled { opacity: 0.5; cursor: default; transform: none; }
+.proposal-act-btn.accept { background: #22c55e; color: #fff; }
+.proposal-act-btn.modify { background: #7c3aed; color: #fff; }
+.proposal-act-btn.cancel { background: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+
+/* Layout jours Lundi / Midi + Soir */
+.proposal-days-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 8px 0;
+}
+
+.proposal-day-row {
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #ede9fe;
+}
+
+.proposal-day-header {
+    background: #7c3aed;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 4px 10px;
+}
+
+.proposal-day-meals {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    background: #faf5ff;
+}
+
+.proposal-meal-slot {
+    padding: 6px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    border-right: 1px solid #ede9fe;
+}
+.proposal-meal-slot:last-child { border-right: none; }
+
+.proposal-meal-tag {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9ca3af;
+}
+.proposal-meal-tag.midi { color: #f59e0b; }
+.proposal-meal-tag.soir { color: #6366f1; }
+
+.proposal-meal-name {
+    font-size: 12px;
+    color: #374151;
+    line-height: 1.3;
+}
+
+/* ===== POPUP MODIFIER PLANNING PROPOSÉ ===== */
+
+.mod-proposal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+
+.mod-proposal-popup {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 85dvh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    overflow: hidden;
+}
+
+.mod-proposal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.mod-proposal-header h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+}
+
+.mod-proposal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    color: #9ca3af;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0 4px;
+}
+.mod-proposal-close:hover { color: #374151; }
+
+.mod-proposal-tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.mod-tab-btn {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    background: none;
+    font-size: 13px;
+    font-weight: 600;
+    color: #9ca3af;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+}
+.mod-tab-btn.active {
+    color: #7c3aed;
+    border-bottom-color: #7c3aed;
+    background: #faf5ff;
+}
+
+.mod-proposal-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px;
+}
+
+.mod-proposal-footer {
+    padding: 12px 16px;
+    border-top: 1px solid #f3f4f6;
+}
+
+/* Onglet Manuel */
+.manual-mod-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.manual-mod-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #faf5ff;
+    border-radius: 10px;
+    border: 1px solid #ede9fe;
     transition: opacity 0.2s;
 }
 
-.chat-accept-btn:hover {
-    opacity: 0.88;
+.manual-mod-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 64px;
+    flex-shrink: 0;
 }
 
-.chat-accept-btn:disabled {
-    opacity: 0.55;
-    cursor: default;
+.manual-mod-day {
+    font-size: 11px;
+    font-weight: 700;
+    color: #7c3aed;
 }
+
+.manual-mod-moment {
+    font-size: 10px;
+    color: #9ca3af;
+}
+
+.manual-mod-select {
+    flex: 1;
+    font-size: 12px;
+    border: 1px solid #ddd6fe;
+    border-radius: 6px;
+    padding: 5px 6px;
+    background: #fff;
+    color: #374151;
+    min-width: 0;
+}
+
+.manual-mod-del {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 2px 4px;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+.manual-mod-del:hover { background: #fee2e2; }
+
+/* Onglet Chat IA */
+.ia-mod-messages {
+    min-height: 120px;
+    max-height: 220px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.ia-mod-hint {
+    font-size: 12px;
+    color: #9ca3af;
+    font-style: italic;
+    text-align: center;
+    padding: 12px 0;
+}
+
+.ia-mod-msg {
+    font-size: 13px;
+    line-height: 1.4;
+    padding: 8px 12px;
+    border-radius: 12px;
+    max-width: 90%;
+}
+.ia-mod-msg.user { background: #7c3aed; color: #fff; align-self: flex-end; }
+.ia-mod-msg.assistant { background: #f3f4f6; color: #374151; align-self: flex-start; }
+
+.ia-mod-input-area {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    border-top: 1px solid #f3f4f6;
+    padding-top: 10px;
+}
+
+.ia-mod-input-area textarea {
+    flex: 1;
+    border: 1.5px solid #ddd6fe;
+    border-radius: 10px;
+    padding: 8px 12px;
+    resize: none;
+    font-size: 13px;
+    color: #374151;
+    outline: none;
+    font-family: inherit;
+}
+.ia-mod-input-area textarea:focus { border-color: #7c3aed; }
+
+.ia-mod-input-area button {
+    padding: 8px 14px;
+    background: #7c3aed;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    cursor: pointer;
+    height: 38px;
+}
+.ia-mod-input-area button:hover { background: #6d28d9; }
 
 /* ===== CHAT — OVERLAY POPUP (semaines / style preview) ===== */
 

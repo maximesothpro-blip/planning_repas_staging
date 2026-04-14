@@ -4094,34 +4094,230 @@ function reinforceIntent(originalMessage, confirmedIntent) {
 
 function renderPlanningProposal(planning, messageHtml) {
     const days = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
-    const dayLabels = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+    const dayLabels = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
 
-    const cards = days.map((day, i) => {
+    const rows = days.map((day, i) => {
         const entry = planning[day];
         if (!entry) return '';
         const dej = entry.dejeuner?.name || '—';
         const din = entry.diner?.name || '—';
-        return `<div class="proposal-card">
-            <div class="proposal-card-day">${dayLabels[i]}</div>
-            <div class="proposal-card-meal">
-                <span class="proposal-meal-icon">🍽️</span>
-                <span class="proposal-meal-name">${dej}</span>
-            </div>
-            <div class="proposal-card-meal diner">
-                <span class="proposal-meal-icon">🌙</span>
-                <span class="proposal-meal-name">${din}</span>
+        return `<div class="proposal-day-row">
+            <div class="proposal-day-header">${dayLabels[i]}</div>
+            <div class="proposal-day-meals">
+                <div class="proposal-meal-slot">
+                    <span class="proposal-meal-tag midi">🍽️ Midi</span>
+                    <span class="proposal-meal-name">${dej}</span>
+                </div>
+                <div class="proposal-meal-slot">
+                    <span class="proposal-meal-tag soir">🌙 Soir</span>
+                    <span class="proposal-meal-name">${din}</span>
+                </div>
             </div>
         </div>`;
     }).filter(Boolean).join('');
 
     const bubble = `
         ${messageHtml ? `<div class="planning-proposal-msg">${messageHtml}</div>` : ''}
-        <div class="proposal-cards-grid">${cards}</div>
+        <div class="proposal-days-list" id="proposalDaysList">${rows}</div>
         <div class="planning-proposal-actions">
-            <button class="chat-accept-btn" id="chatAcceptBtn">✅ Accepter le planning</button>
+            <button class="proposal-act-btn accept" id="chatAcceptBtn">✅ Accepter</button>
+            <button class="proposal-act-btn modify" id="chatModifyProposalBtn">✏️ Modifier</button>
+            <button class="proposal-act-btn cancel" id="chatCancelProposalBtn">✕ Annuler</button>
         </div>`;
 
     appendChatMessage('assistant', bubble);
+    setChatReviewMode(true);
+}
+
+// Mode review : masque l'input du chat pendant qu'un planning est proposé
+function setChatReviewMode(active) {
+    const inputArea = document.querySelector('.chat-input-area');
+    const contextBar = document.getElementById('chatContextBar');
+    if (inputArea) inputArea.style.display = active ? 'none' : '';
+    if (contextBar) contextBar.style.display = active ? 'none' : '';
+}
+
+function cancelProposal() {
+    proposedPlanning = null;
+    setChatReviewMode(false);
+    appendChatMessage('assistant', 'Planning annulé. Dis-moi ce que tu veux ou regénère quand tu veux !');
+}
+
+// Met à jour le rendu de la liste des jours dans la bulle existante
+function refreshProposalDaysDisplay() {
+    const list = document.getElementById('proposalDaysList');
+    if (!list || !proposedPlanning) return;
+    const days = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+    const dayLabels = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+    list.innerHTML = days.map((day, i) => {
+        const entry = proposedPlanning[day];
+        if (!entry) return '';
+        const dej = entry.dejeuner?.name || '—';
+        const din = entry.diner?.name || '—';
+        return `<div class="proposal-day-row">
+            <div class="proposal-day-header">${dayLabels[i]}</div>
+            <div class="proposal-day-meals">
+                <div class="proposal-meal-slot">
+                    <span class="proposal-meal-tag midi">🍽️ Midi</span>
+                    <span class="proposal-meal-name">${dej}</span>
+                </div>
+                <div class="proposal-meal-slot">
+                    <span class="proposal-meal-tag soir">🌙 Soir</span>
+                    <span class="proposal-meal-name">${din}</span>
+                </div>
+            </div>
+        </div>`;
+    }).filter(Boolean).join('');
+}
+
+// ===== POPUP MODIFIER PLANNING PROPOSÉ =====
+
+function openModProposalPopup() {
+    document.getElementById('modProposalOverlay').style.display = 'flex';
+    switchModProposalTab('manual');
+}
+
+function closeModProposalPopup() {
+    document.getElementById('modProposalOverlay').style.display = 'none';
+    refreshProposalDaysDisplay();
+}
+
+function switchModProposalTab(tab) {
+    document.querySelectorAll('.mod-tab-btn').forEach(b =>
+        b.classList.toggle('active', b.dataset.tab === tab));
+    const content = document.getElementById('modProposalContent');
+    if (tab === 'manual') renderManualModTab(content);
+    else renderIAModTab(content);
+}
+
+function renderManualModTab(container) {
+    if (!proposedPlanning || !container) return;
+    const days = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+    const dayLabels = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+    const moments = [
+        { key: 'dejeuner', label: '🍽️ Midi' },
+        { key: 'diner',    label: '🌙 Soir' }
+    ];
+
+    // Options <select> depuis recipes globaux
+    const opts = recipes.map(r =>
+        `<option value="${r.id}" data-name="${r.name}">${r.name}</option>`
+    ).join('');
+
+    const rows = [];
+    days.forEach((day, i) => {
+        const entry = proposedPlanning[day];
+        if (!entry) return;
+        moments.forEach(({ key, label }) => {
+            const meal = entry[key];
+            if (!meal) return;
+            rows.push(`
+                <div class="manual-mod-row">
+                    <div class="manual-mod-info">
+                        <span class="manual-mod-day">${dayLabels[i]}</span>
+                        <span class="manual-mod-moment">${label}</span>
+                    </div>
+                    <select class="manual-mod-select" data-day="${day}" data-moment="${key}">
+                        <option value="${meal.id}" selected>${meal.name}</option>
+                        ${opts}
+                    </select>
+                    <button class="manual-mod-del" data-day="${day}" data-moment="${key}" title="Supprimer">🗑️</button>
+                </div>`);
+        });
+    });
+
+    container.innerHTML = `<div class="manual-mod-list">${rows.join('')}</div>`;
+
+    // Listeners sélecteurs
+    container.querySelectorAll('.manual-mod-select').forEach(sel => {
+        sel.addEventListener('change', e => {
+            const { day, moment } = e.target.dataset;
+            const opt = e.target.options[e.target.selectedIndex];
+            if (proposedPlanning[day]) {
+                proposedPlanning[day][moment] = { id: opt.value, name: opt.text };
+            }
+        });
+    });
+
+    // Listeners suppression
+    container.querySelectorAll('.manual-mod-del').forEach(btn => {
+        btn.addEventListener('click', e => {
+            const { day, moment } = e.target.dataset;
+            if (proposedPlanning[day]) {
+                proposedPlanning[day][moment] = null;
+                e.target.closest('.manual-mod-row').style.opacity = '0.35';
+                e.target.closest('.manual-mod-row').style.pointerEvents = 'none';
+                e.target.textContent = '✓';
+            }
+        });
+    });
+}
+
+function renderIAModTab(container) {
+    if (!container) return;
+    container.innerHTML = `
+        <div class="ia-mod-messages" id="iaModMessages">
+            <div class="ia-mod-hint">💡 Dis-moi ce que tu veux modifier dans ce planning proposé !</div>
+        </div>
+        <div class="ia-mod-input-area">
+            <textarea id="iaModInput" placeholder="Ex: Remplace le lundi midi par quelque chose de végé..." rows="2" style="font-size:16px;"></textarea>
+            <button id="iaModSendBtn">➤</button>
+        </div>`;
+
+    document.getElementById('iaModSendBtn').addEventListener('click', sendModifyProposalIA);
+    document.getElementById('iaModInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendModifyProposalIA(); }
+    });
+}
+
+async function sendModifyProposalIA() {
+    const input = document.getElementById('iaModInput');
+    if (!input || !proposedPlanning) return;
+    const text = input.value.trim();
+    if (!text) return;
+
+    input.value = '';
+    const msgs = document.getElementById('iaModMessages');
+    if (msgs) {
+        msgs.innerHTML += `<div class="ia-mod-msg user">${text}</div>
+            <div class="ia-mod-msg assistant" id="iaModTyping">⋯</div>`;
+        msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    try {
+        const res = await fetch(`${window.BACKEND_API_URL}/api/generate-planning`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                prompt: text,
+                proposedPlanning,
+                currentWeek, currentYear,
+                servings: selectedServings,
+                frequency: selectedFrequency,
+                userIntent: 'modify_proposal',
+                history: chatHistory.slice(-6)
+            })
+        });
+
+        const data = await res.json();
+        const typing = document.getElementById('iaModTyping');
+
+        if (data.planning) {
+            proposedPlanning = data.planning;
+            // Rerender onglet manuel si actif
+            const active = document.querySelector('.mod-tab-btn.active')?.dataset.tab;
+            if (active === 'manual') renderManualModTab(document.getElementById('modProposalContent'));
+            const reply = data.message || '✅ Planning mis à jour !';
+            if (typing) typing.textContent = reply;
+        } else {
+            if (typing) typing.textContent = data.message || 'Impossible de modifier 😕';
+        }
+        if (msgs) msgs.scrollTop = msgs.scrollHeight;
+
+    } catch(err) {
+        const typing = document.getElementById('iaModTyping');
+        if (typing) typing.textContent = 'Erreur de connexion 😕';
+    }
 }
 
 async function acceptProposedPlanning() {
@@ -4162,6 +4358,7 @@ async function acceptProposedPlanning() {
             if (btn) { btn.textContent = '✅ Ajouté !'; }
             appendChatMessage('assistant', `🎉 ${data.created} repas ajoutés à ta semaine ! Rechargement...`);
             proposedPlanning = null;
+            setChatReviewMode(false);
             await fullRefresh();
         } else {
             if (btn) { btn.disabled = false; btn.textContent = '✅ Accepter le planning'; }
@@ -4194,6 +4391,7 @@ function resetChat() {
     selectedServings = 2;
     selectedFrequency = 1;
     forcedRecipesInited = false;
+    setChatReviewMode(false);
     renderForcedChips();
 
     const messages = document.getElementById('chatMessages');
@@ -4349,7 +4547,17 @@ document.getElementById('chatMessages').addEventListener('click', e => {
         acceptProposedPlanning();
         return;
     }
-    // Bouton appliquer changements (modify)
+    // Bouton modifier planning proposé → ouvre popup
+    if (e.target.id === 'chatModifyProposalBtn') {
+        openModProposalPopup();
+        return;
+    }
+    // Bouton annuler planning proposé
+    if (e.target.id === 'chatCancelProposalBtn') {
+        cancelProposal();
+        return;
+    }
+    // Bouton appliquer changements (modify existant Airtable)
     if (e.target.id === 'chatAcceptModifyBtn') {
         applyPlanningChanges();
         return;
@@ -4372,6 +4580,17 @@ document.getElementById('chatMessages').addEventListener('click', e => {
 document.getElementById('chatFab').addEventListener('click', openChatPopup);
 document.getElementById('closeChatPopup').addEventListener('click', closeChatPopup);
 document.getElementById('chatNewBtn').addEventListener('click', resetChat);
+
+// Popup modifier planning proposé
+document.getElementById('closeModProposalBtn').addEventListener('click', closeModProposalPopup);
+document.getElementById('applyModProposalBtn').addEventListener('click', closeModProposalPopup);
+document.querySelectorAll('.mod-tab-btn').forEach(btn =>
+    btn.addEventListener('click', () => switchModProposalTab(btn.dataset.tab))
+);
+// Fermer en cliquant l'overlay
+document.getElementById('modProposalOverlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModProposalPopup();
+});
 document.getElementById('chatSendBtn').addEventListener('click', sendChatMessage);
 
 document.getElementById('chatPinBtn').addEventListener('click', () => {
