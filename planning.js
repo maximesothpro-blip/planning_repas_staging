@@ -4246,19 +4246,54 @@ async function sendChatMessage() {
     chatHistory.push({ role: 'user', content: text });
     showChatTyping();
 
+    // Tout passe par /api/generate-planning — le Keyword Router n8n décide :
+    // create / modify / chat / unclear
     try {
-        const response = await fetch(`${window.BACKEND_API_URL}/api/chat`, {
+        const res = await fetch(`${window.BACKEND_API_URL}/api/generate-planning`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text, history: chatHistory.slice(-10) })
+            body: JSON.stringify({
+                prompt: text,
+                styles: selectedStyles,
+                forcedRecipes,
+                currentWeek,
+                currentYear,
+                servings: selectedServings,
+                frequency: selectedFrequency,
+                history: chatHistory.slice(-10)
+            })
         });
 
-        const data = await response.json();
+        const data = await res.json();
         removeChatTyping();
 
-        const replyText = data.message || 'Je n\'ai pas pu répondre, réessaie.';
-        chatHistory.push({ role: 'assistant', content: replyText });
-        appendChatMessage('assistant', replyText.replace(/\n/g, '<br>'));
+        // Cas 1 : clarification requise (unclear)
+        if (data.needsClarification) {
+            pendingClarificationMessage = text;
+            renderClarificationMessage(data.message);
+            chatHistory.push({ role: 'assistant', content: data.message });
+
+        // Cas 2 : modification du planning
+        } else if (data.mode === 'modify' && data.changes) {
+            proposedChanges = data.changes;
+            const messageHtml = (data.message || '').replace(/\n/g, '<br>');
+            renderModifyProposal(data.changes, messageHtml);
+            chatHistory.push({ role: 'assistant', content: data.message || 'Voici les modifications.' });
+
+        // Cas 3 : planning complet proposé (create)
+        } else if (data.planning) {
+            proposedPlanning = data.planning;
+            const messageHtml = (data.message || '').replace(/\n/g, '<br>');
+            renderPlanningProposal(data.planning, messageHtml);
+            chatHistory.push({ role: 'assistant', content: data.message || 'Voici le planning proposé.' });
+            updateGenerateBtn();
+
+        // Cas 4 : réponse chat simple (intent = chat)
+        } else {
+            const replyText = data.message || data.error || 'Je n\'ai pas pu répondre, réessaie.';
+            appendChatMessage('assistant', replyText.replace(/\n/g, '<br>'));
+            chatHistory.push({ role: 'assistant', content: replyText });
+        }
 
     } catch (err) {
         removeChatTyping();

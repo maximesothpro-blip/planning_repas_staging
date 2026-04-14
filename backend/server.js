@@ -10,11 +10,14 @@ const PORT = process.env.PORT || 3001;
 app.use(cors());
 app.use(express.json());
 
-// Configuration - Staging n8n webhooks
-const N8N_CREATE_RECIPE_WEBHOOK = 'https://n8n.srv1081620.hstgr.cloud/webhook/create-recepie-staging';
-const N8N_ACCEPT_RECIPE_WEBHOOK = 'https://n8n.srv1081620.hstgr.cloud/webhook/accept-recepie-staging';
-const N8N_MODIFY_RECIPE_WEBHOOK = 'https://n8n.srv1081620.hstgr.cloud/webhook/modifie-recepie-staging';
-const N8N_CHAT_WEBHOOK = 'https://n8n.srv1081620.hstgr.cloud/webhook/chat-planning-staging';
+// Configuration - Staging n8n webhooks (TEST MODE = webhook-test/)
+const N8N_BASE = 'https://n8n.srv1081620.hstgr.cloud/webhook-test';
+const N8N_CREATE_RECIPE_WEBHOOK     = `${N8N_BASE}/create-recepie-staging`;
+const N8N_ACCEPT_RECIPE_WEBHOOK     = `${N8N_BASE}/accept-recepie-staging`;
+const N8N_MODIFY_RECIPE_WEBHOOK     = `${N8N_BASE}/modifie-recepie-staging`;
+const N8N_GENERATE_PLANNING_WEBHOOK = `${N8N_BASE}/generate-planning-staging`;
+const N8N_REINFORCE_INTENT_WEBHOOK  = `${N8N_BASE}/reinforce-intent-staging`;
+// NOTE : plus de N8N_CHAT_WEBHOOK — tout passe par generate-planning-staging
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
 
@@ -701,49 +704,7 @@ app.delete('/api/shopping-list/:id', async (req, res) => {
 });
 
 // ===== CHAT IA =====
-app.post('/api/chat', async (req, res) => {
-  try {
-    const { message, history } = req.body;
-    if (!message) return res.status(400).json({ error: 'Message requis' });
-
-    console.log(`💬 Chat message: "${message}"`);
-
-    const response = await axios.post(N8N_CHAT_WEBHOOK, {
-      message,
-      history: history || [],
-      timestamp: new Date().toISOString()
-    }, { timeout: 60000 });
-
-    // n8n peut renvoyer différents formats
-    const data = response.data;
-    let text = '';
-    let action = null;
-    let actionData = null;
-
-    if (typeof data === 'string') {
-      text = data;
-    } else if (data.message) {
-      text = data.message;
-      action = data.action || null;
-      actionData = data.actionData || null;
-    } else if (data.response) {
-      text = data.response;
-      action = data.action || null;
-    } else if (data.text) {
-      text = data.text;
-    } else {
-      text = JSON.stringify(data);
-    }
-
-    res.json({ success: true, message: text, action, actionData });
-  } catch (error) {
-    console.error('Chat error:', error.response?.data || error.message);
-    const isTimeout = error.code === 'ECONNABORTED';
-    res.status(500).json({
-      error: isTimeout ? 'L\'IA met trop de temps à répondre' : 'Erreur de communication avec l\'IA'
-    });
-  }
-});
+// /api/chat supprimé — tout passe par /api/generate-planning (Keyword Router n8n)
 
 // ===== PRODUITS RAPIDES (Quick Add Items) =====
 
@@ -793,6 +754,122 @@ app.delete('/api/quick-items/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting quick item:', error.response?.data || error.message);
     res.status(500).json({ error: 'Failed to delete quick item' });
+  }
+});
+
+// ===== NOUVELLES ROUTES CHAT PLANNING =====
+
+// POST : Renforcement intent (fire-and-forget, pas de timeout bloquant)
+app.post('/api/reinforce-intent', (req, res) => {
+  const { originalMessage, confirmedIntent } = req.body;
+  res.json({ success: true }); // Réponse immédiate
+  // Appel n8n en arrière-plan (sans await)
+  axios.post(N8N_REINFORCE_INTENT_WEBHOOK, { originalMessage, confirmedIntent }, { timeout: 10000 })
+    .catch(err => console.error('Reinforce intent error (ignored):', err.message));
+});
+
+// GET : Recettes filtrées par tag/style
+app.get('/api/recipes/by-tag/:tag', async (req, res) => {
+  try {
+    const tag = req.params.tag;
+    const filterFormula = `FIND('${tag}', ARRAYJOIN({Tags}, ',')) > 0`;
+
+    const response = await axios.get(
+      `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Recettes`,
+      {
+        headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` },
+        params: { filterByFormula: filterFormula, maxRecords: 8 }
+      }
+    );
+
+    const recipes = response.data.records.map(record => ({
+      id: record.id,
+      name: record.fields.Nom || 'Sans nom',
+      description: record.fields.Description || '',
+      tags: record.fields.Tags || []
+    }));
+
+    res.json({ success: true, recipes });
+  } catch (error) {
+    console.error('Error fetching recipes by tag:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to fetch recipes by tag' });
+  }
+});
+
+// POST : Créer plusieurs entrées planning en une requête (bulk)
+app.post('/api/planning/bulk', async (req, res) => {
+  try {
+    const { entries } = req.body;
+    if (!entries || !entries.length) return res.status(400).json({ error: 'Entries required' });
+
+    console.log(`📅 Bulk creating ${entries.length} planning entries`);
+
+    // Airtable accepte max 10 records par requête
+    const results = [];
+    for (let i = 0; i < entries.length; i += 10) {
+      const batch = entries.slice(i, i + 10);
+      const response = await axios.post(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/Plannings%20Hebdomadaires`,
+        {
+          records: batch.map(e => ({
+            fields: {
+              'Jour': e.day,
+              'Date': e.date,
+              'Moment': e.meal,
+              'Recette': [e.recipeId],
+              'Statut': 'Planifié',
+              'Semaine': e.week,
+              'Annee': e.year,
+              'Nombre de personnes': e.servings || 2
+            }
+          }))
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      results.push(...response.data.records);
+    }
+
+    res.json({ success: true, created: results.length });
+  } catch (error) {
+    console.error('Error bulk creating planning:', error.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to bulk create planning', details: error.response?.data || error.message });
+  }
+});
+
+// POST : Générer un planning via n8n IA
+app.post('/api/generate-planning', async (req, res) => {
+  try {
+    const { styles, forcedRecipes, prompt, currentWeek, currentYear, history } = req.body;
+
+    console.log(`🤖 Generating planning: styles=${JSON.stringify(styles)}, week=${currentWeek}/${currentYear}`);
+
+    const response = await axios.post(N8N_GENERATE_PLANNING_WEBHOOK, {
+      styles: styles || [],
+      forcedRecipes: forcedRecipes || [],
+      prompt: prompt || '',
+      currentWeek,
+      currentYear,
+      history: history || [],
+      timestamp: new Date().toISOString()
+    }, { timeout: 90000 });
+
+    const data = response.data;
+    res.json({
+      success: true,
+      message: data.message || '',
+      planning: data.planning || null
+    });
+  } catch (error) {
+    console.error('Generate planning error:', error.response?.data || error.message);
+    const isTimeout = error.code === 'ECONNABORTED';
+    res.status(500).json({
+      error: isTimeout ? 'L\'IA met trop de temps à répondre' : 'Erreur de génération du planning'
+    });
   }
 });
 
