@@ -4272,6 +4272,8 @@ async function sendChatMessage() {
             pendingClarificationMessage = text;
             renderClarificationMessage(data.message);
             chatHistory.push({ role: 'assistant', content: data.message });
+            // Log automatique du cas unclear pour apprentissage
+            reinforceIntent(text, 'unclear');
 
         // Cas 2 : modification du planning
         } else if (data.mode === 'modify' && data.changes) {
@@ -4337,9 +4339,9 @@ document.getElementById('chatMessages').addEventListener('click', e => {
         });
         return;
     }
-    // Bouton générer
+    // Bouton générer — force create pour court-circuiter le Keyword Router
     if (e.target.id === 'chatGenerateBtn') {
-        generatePlanning();
+        generatePlanning('create');
         return;
     }
     // Bouton accepter planning (create)
