@@ -4391,6 +4391,24 @@ async function sendModifyProposalIA() {
     }
 }
 
+// Résout un ID de recette en vérifiant qu'il existe localement.
+// Fallback : cherche par nom si l'ID est invalide.
+function resolveRecipeId(idOrName) {
+    if (!idOrName) return null;
+    const str = String(idOrName).trim();
+    // Cherche par ID exact
+    const byId = recipes.find(r => r.id === str);
+    if (byId) return byId.id;
+    // Fallback : cherche par nom (insensible à la casse)
+    const byName = recipes.find(r => r.name.toLowerCase() === str.toLowerCase());
+    if (byName) {
+        console.warn(`⚠️ resolveRecipeId: ID "${str}" inconnu, trouvé par nom → ${byName.id}`);
+        return byName.id;
+    }
+    console.warn(`⚠️ resolveRecipeId: recette introuvable pour "${str}", entrée ignorée`);
+    return null;
+}
+
 async function acceptProposedPlanning() {
     if (!proposedPlanning) return;
 
@@ -4411,11 +4429,13 @@ async function acceptProposedPlanning() {
         date.setDate(date.getDate() + i);
         const dateStr = date.toISOString().split('T')[0];
 
-        if (entry.dejeuner?.id) {
-            entries.push({ day: dayLabels[i], date: dateStr, meal: 'Déjeuner', recipeId: entry.dejeuner.id, week: currentWeek, year: currentYear, servings: 2 });
+        const dejId = resolveRecipeId(entry.dejeuner?.id || entry.dejeuner?.name);
+        if (dejId) {
+            entries.push({ day: dayLabels[i], date: dateStr, meal: 'Déjeuner', recipeId: dejId, week: currentWeek, year: currentYear, servings: 2 });
         }
-        if (entry.diner?.id) {
-            entries.push({ day: dayLabels[i], date: dateStr, meal: 'Dîner', recipeId: entry.diner.id, week: currentWeek, year: currentYear, servings: 2 });
+        const dinId = resolveRecipeId(entry.diner?.id || entry.diner?.name);
+        if (dinId) {
+            entries.push({ day: dayLabels[i], date: dateStr, meal: 'Dîner', recipeId: dinId, week: currentWeek, year: currentYear, servings: 2 });
         }
     });
 
