@@ -95,7 +95,7 @@ app.get('/health', (req, res) => {
 // Endpoint pour créer une recette via n8n (v3.10)
 app.post('/api/create-recipe', async (req, res) => {
   try {
-    const { title, description, ingredients, recipe } = req.body;
+    const { title, description, ingredients, recipe, tags } = req.body;
 
     if (!title) {
       return res.status(400).json({
@@ -111,6 +111,7 @@ app.post('/api/create-recipe', async (req, res) => {
       description,
       ingredients,
       recipe,
+      tags: Array.isArray(tags) ? tags : [],
       timestamp: new Date().toISOString()
     }, {
       timeout: 60000 // 60 secondes de timeout pour laisser le temps à n8n de traiter

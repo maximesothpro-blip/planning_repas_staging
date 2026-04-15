@@ -3379,11 +3379,11 @@ createRecipeForm.addEventListener('submit', async (e) => {
         console.log('✅ n8n response keys:', Object.keys(result));
         console.log('✅ n8n response stringified:', JSON.stringify(result, null, 2));
 
-        // Store recipe data for Accept button (on conserve les tags choisis par l'utilisateur)
-        currentRecipeData = { ...result, tags: formData.tags };
+        // Store recipe data for Accept button — l'IA retourne ses propres tags, prioritaires sur les hints
+        currentRecipeData = { ...result, tags: Array.isArray(result.tags) && result.tags.length ? result.tags : formData.tags };
 
         // Display preview with n8n response
-        displayRecipePreview(result);
+        displayRecipePreview(currentRecipeData);
 
         // Hide loading, show preview
         recipeLoading.style.display = 'none';
@@ -3470,6 +3470,19 @@ function displayRecipePreview(recipeData) {
             html += `<p>${data.recipe}</p>`;
         }
         html += `</div>`;
+    }
+
+    // Tags assignés par l'IA
+    if (Array.isArray(data.tags) && data.tags.length) {
+        const tagEmojis = { 'Healthy':'🥗','Prot':'💪','Pas cher':'💸','Fancy':'✨','Challenge':'🎯','Confort':'🏠','Réconfort':'🤗','Favori':'⭐','Poulet':'🍗','Bœuf':'🥩','Autre':'🍽️','Pâtes':'🍝','Riz':'🍚' };
+        html += `<div style="margin-bottom: 16px;">`;
+        html += `<p style="margin-bottom: 8px;"><strong>🏷️ Tags :</strong></p>`;
+        html += `<div style="display: flex; flex-wrap: wrap; gap: 6px;">`;
+        data.tags.forEach(tag => {
+            const emoji = tagEmojis[tag] || '🏷️';
+            html += `<span style="background:#f3f0ff;border:1.5px solid #a78bfa;border-radius:20px;padding:4px 12px;font-size:13px;color:#6d28d9;font-weight:500;">${emoji} ${tag}</span>`;
+        });
+        html += `</div></div>`;
     }
 
     // If no content was added, show debug info

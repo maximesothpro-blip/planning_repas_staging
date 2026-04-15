@@ -1,0 +1,317 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "model": "google/gemini-2.0-flash-lite-001",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [208, 176],
+      "id": "38dfdf86-b475-4fd1-a3d4-6180e8d59c76",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "aL6h1yYIdQSNzcsb",
+          "name": "OpenRouter maximesothpro Avril"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json.output;\n\n// Fonction pour extraire une section\nfunction extractSection(text, sectionName, nextSection = null) {\n  const regex = new RegExp(`${sectionName}\\\\s*:\\\\s*\\\\n([\\\\s\\\\S]*?)(?=${nextSection ? nextSection + '\\\\s*:' : '$'})`, 'i');\n  const match = text.match(regex);\n  return match ? match[1].trim() : '';\n}\n\n// Extraire les sections\nconst titre = extractSection(input, 'Titre', 'Description');\nconst description = extractSection(input, 'Description', 'Ingrédients');\nconst ingredientsRaw = extractSection(input, 'Ingrédients', 'Recette');\nconst recetteRaw = extractSection(input, 'Recette', 'Nutrition');\nconst nutritionRaw = extractSection(input, 'Nutrition', 'Tags');\nconst tagsRaw = extractSection(input, 'Tags');\n\n// Parser les ingrédients\nlet ingredients = [];\ntry {\n  ingredients = JSON.parse(ingredientsRaw);\n} catch (error) {\n  ingredients = [];\n}\n\n// Parser la nutrition\nlet nutrition = {};\ntry {\n  nutrition = JSON.parse(nutritionRaw);\n} catch (error) {\n  nutrition = {};\n}\n\n// Parser les tags\nlet tags = [];\ntry {\n  const cleaned = tagsRaw.replace(/\\n/g, ' ').trim();\n  tags = JSON.parse(cleaned);\n} catch {\n  const cleaned = tagsRaw.replace(/[\\[\\]]/g, '').trim();\n  tags = cleaned ? cleaned.split(',').map(t => t.trim()).filter(Boolean) : [];\n}\n\n// Parser les étapes de la recette\nconst recetteSteps = recetteRaw\n  .split('\\n')\n  .filter(line => /^\\d+\\./.test(line.trim()))\n  .map(line => line.replace(/^\\d+\\.\\s*/, '').trim());\n\nreturn {\n  titre,\n  description,\n  ingredients: JSON.stringify(ingredients),\n  recette: JSON.stringify(recetteSteps),\n  calories: nutrition.calories || 0,\n  proteines: nutrition.proteines || 0,\n  glucides: nutrition.glucides || 0,\n  lipides: nutrition.lipides || 0,\n  tags\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 0],
+      "id": "a2daeafb-36d7-4202-bed8-a1592e1c6f2c",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "value": "appe3LlfGJQYTp7Tu",
+          "mode": "list",
+          "cachedResultName": "Planning Repas - Staging",
+          "cachedResultUrl": "https://airtable.com/appe3LlfGJQYTp7Tu"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblD15BAgi3ZbTxnQ",
+          "mode": "list",
+          "cachedResultName": "Recettes",
+          "cachedResultUrl": "https://airtable.com/appJEGDcsnuU70vJM/tblD15BAgi3ZbTxnQ"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Calories": "={{ $json.body.calories }}",
+            "Protéines (g)": "={{ $json.body.proteines }}",
+            "Glucides (g)": "={{ $json.body.glucides }}",
+            "Lipides (g)": "={{ $json.body.lipides }}",
+            "Nom": "={{ $json.body.title }}",
+            "Description": "={{ $json.body.description }}",
+            "Recette": "={{ $json.body.recipe }}",
+            "Ingrédients JSON": "={{ $json.body.ingredients }}",
+            "Tags": "={{ $json.body.tags }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {"id": "Nom", "displayName": "Nom", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+            {"id": "Ingrédients Brut", "displayName": "Ingrédients Brut", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": true},
+            {"id": "Ingrédients JSON", "displayName": "Ingrédients JSON", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+            {"id": "Calories", "displayName": "Calories", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "number", "readOnly": false, "removed": false},
+            {"id": "Protéines (g)", "displayName": "Protéines (g)", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "number", "readOnly": false, "removed": false},
+            {"id": "Glucides (g)", "displayName": "Glucides (g)", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "number", "readOnly": false, "removed": false},
+            {"id": "Lipides (g)", "displayName": "Lipides (g)", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "number", "readOnly": false, "removed": false},
+            {"id": "Date d'Ajout", "displayName": "Date d'Ajout", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "dateTime", "readOnly": false, "removed": true},
+            {
+              "id": "Tags",
+              "displayName": "Tags",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "options": [
+                {"name": "Healthy", "value": "Healthy"},
+                {"name": "Prot", "value": "Prot"},
+                {"name": "Pas cher", "value": "Pas cher"},
+                {"name": "Fancy", "value": "Fancy"},
+                {"name": "Challenge", "value": "Challenge"},
+                {"name": "Confort", "value": "Confort"},
+                {"name": "Réconfort", "value": "Réconfort"},
+                {"name": "Favori", "value": "Favori"},
+                {"name": "Poulet", "value": "Poulet"},
+                {"name": "Bœuf", "value": "Bœuf"},
+                {"name": "Autre", "value": "Autre"},
+                {"name": "Pâtes", "value": "Pâtes"},
+                {"name": "Riz", "value": "Riz"}
+              ],
+              "readOnly": false,
+              "removed": false
+            },
+            {"id": "Nombre de Plannings", "displayName": "Nombre de Plannings", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": true, "removed": true},
+            {"id": "Plannings Hebdomadaires", "displayName": "Plannings Hebdomadaires", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "array", "readOnly": false, "removed": false},
+            {"id": "Description", "displayName": "Description", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false},
+            {"id": "Recette", "displayName": "Recette", "required": false, "defaultMatch": false, "canBeUsedToMatch": true, "display": true, "type": "string", "readOnly": false, "removed": false}
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [240, 720],
+      "id": "f300c071-aaa2-42c2-90a7-6ec4b1ced236",
+      "name": "Create a record",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "viXRC50hk962Bcvw",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "modifie-recepie-staging",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [64, 352],
+      "id": "8ab41f2b-8c2d-4648-8a5b-ffb4786b1b05",
+      "name": "Modifier la recette",
+      "webhookId": "52477d9f-b949-4fec-8de1-17e3dfd624b4"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "create-recepie-staging",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [64, 0],
+      "id": "74d93174-7606-4b41-a31b-b0f7d52cacf2",
+      "name": "Création recette",
+      "webhookId": "20019346-1c09-4a90-9d36-8d009adc34ed"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [928, 0],
+      "id": "d220be66-10c7-4059-80fb-e4c545ef49a6",
+      "name": "Demander confirmation utilisateur"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "accept-recepie-staging",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [64, 720],
+      "id": "55d8d9b3-e531-4237-a7b0-2d277289d7e5",
+      "name": "Recette acceptée",
+      "webhookId": "2c7f85f6-deee-4a3e-a3f3-a44fd1edb827"
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "ok",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [416, 720],
+      "id": "8802f765-5d24-442c-aafc-99b44d23198a",
+      "name": "Respond to Webhook1"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Crée une recette complète en français basée sur ces informations :\n\nTitre : {{ $json.body.title }}\nDescription : {{ $json.body.description || '' }}\nIngrédients : {{ $json.body.ingredients || '' }}\nRecette : {{ $json.body.recipe || '' }}\nTags suggérés par l'utilisateur : {{ JSON.stringify($json.body.tags || []) }}\n\nSi la description, les ingrédients ou les étapes sont vides, génère-les toi-même de façon cohérente avec le titre. Retourne toujours une recette complète avec titre, description, liste d'ingrédients avec quantités, étapes de préparation détaillées, valeurs nutritionnelles ET les tags appropriés.",
+        "options": {
+          "systemMessage": "Tu es un chef cuisinier expert ET nutritionniste spécialisé dans la création de recettes complètes et précises.\n\nTon rôle : Recevoir une recette potentiellement incomplète (voire très vague) et la transformer en une recette professionnelle, détaillée, prête à cuisiner, AVEC ses valeurs nutritionnelles et ses tags.\n\nCONTEXTE UTILISATEUR :\n- Public cible : Homme de 20 ans\n- Objectif : Alimentation équilibrée\n- Portions : Toujours pour 1 personne\n\nRÈGLES STRICTES :\n\n1. TITRE\n   - Si vague ou incomplet (ex: \"Carbos\"), déduis la recette complète en fonction des autres éléments\n   - Si absent, invente un titre cohérent avec les ingrédients/instructions fournis\n   - Le titre doit être clair et appétissant\n\n2. DESCRIPTION\n   - Si manquante, vague ou trop courte : crée une description complète en 1-2 phrases\n   - Reste fidèle à l'intention de l'utilisateur\n   - Mentionne les points forts du plat (rapide, équilibré, savoureux...)\n   - Si l'utilisateur donne une description, améliore-la si nécessaire\n\n3. INGRÉDIENTS\n   - COMPLÈTE tous les ingrédients manquants pour que la recette soit réalisable\n   - Adapte toutes les quantités pour 1 personne\n   - Utilise des quantités réalistes pour un homme de 20 ans (portions généreuses mais raisonnables)\n   - Sois précis : utilise grammes (g), pièces, cuillères à soupe (c.à.s), cuillères à café (c.à.c)\n   - Ajoute les bases souvent oubliées : huile, sel, poivre, eau\n\n4. INSTRUCTIONS (style livre de recettes)\n   - Étapes numérotées et claires\n   - Inclus les temps de cuisson précis\n   - Inclus les températures si nécessaire\n   - Utilise des verbes d'action professionnels : faire revenir, émincer, dorer, mijoter, saisir...\n\n5. VALEURS NUTRITIONNELLES\n   - Calcule les valeurs nutritionnelles TOTALES pour 1 personne\n   - Fournis : calories totales (kcal), protéines (g), glucides (g), lipides (g)\n   - Arrondis les valeurs : calories à l'unité, macros à 0.1g près\n\n6. TAGS\n   Assigne automatiquement les tags les plus pertinents. Tiens compte des tags suggérés par l'utilisateur comme indices prioritaires (si cohérents avec la recette).\n\n   LISTE STRICTE des tags autorisés (utilise UNIQUEMENT ces valeurs exactes) :\n\n   Tags de style (plusieurs possibles) :\n   - Healthy : peu de graisses, riche en légumes/protéines maigres\n   - Prot : plus de 30g de protéines\n   - Pas cher : ingrédients basiques et bon marché\n   - Fancy : présentation soignée, ingrédients premium\n   - Challenge : technique complexe ou temps de préparation long\n   - Confort : plat réconfortant et copieux\n   - Réconfort : plat doux et nostalgique (soupe, gratin, etc.)\n   - Favori : si l'utilisateur a explicitement suggéré ce tag\n\n   Tag protéine (exactement 1 obligatoire) :\n   - Poulet : toute volaille (poulet, dinde, canard...)\n   - Bœuf : toute viande rouge (bœuf, porc, agneau, veau...)\n   - Autre : poisson, fruits de mer, œufs, tofu, légumineuses, ou aucune protéine animale\n\n   Tag féculent (exactement 1 obligatoire) :\n   - Pâtes : spaghetti, penne, tagliatelles, gnocchis, etc.\n   - Riz : riz blanc, riz complet, risotto, etc.\n   - Autre : pommes de terre, quinoa, pain, couscous, ou aucun féculent\n\n7. FORMAT DE SORTIE\nRéponds UNIQUEMENT avec ce format (pas de texte avant ou après) :\n\nTitre : \n[Nom de la recette]\n\nDescription : \n[Description courte et appétissante]\n\nIngrédients :\n[{\"ingredient\":\"nom\",\"quantite\":nombre,\"unite\":\"unité\"},{\"ingredient\":\"nom2\",\"quantite\":nombre2,\"unite\":\"unité2\"}]\n\nRecette :\n1. [Étape 1 avec détails précis]\n2. [Étape 2 avec détails précis]\n3. ...\n\nNutrition :\n{\n  \"calories\": nombre,\n  \"proteines\": nombre,\n  \"glucides\": nombre,\n  \"lipides\": nombre\n}\n\nTags :\n[\"tag1\", \"tag2\", \"tag3\"]\n\nRÈGLES POUR LE JSON DES INGRÉDIENTS :\n- \"ingredient\" : singulier, minuscule, sans déterminant\n- \"quantite\" : toujours un nombre (pas de guillemets)\n- \"unite\" : standardisée parmi : g, kg, ml, L, c.à.s, c.à.c, pièce, gousse, pincée\n- Format JSON strict : tableau sur une seule ligne\n\nRÈGLES POUR LE JSON TAGS :\n- Tableau JSON strict avec guillemets doubles\n- Utilise UNIQUEMENT les valeurs exactes de la liste autorisée\n- Toujours 1 tag protéine + 1 tag féculent + au moins 1 tag de style\n- Exemple valide : [\"Healthy\", \"Prot\", \"Poulet\", \"Pâtes\"]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [256, 0],
+      "id": "02c9d077-e9f7-4d8f-9139-56c5cafc0ccb",
+      "name": "AI Agent 1ère proposition"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Recette Précédente :\nTitre : {{ $json.body.title }}\nDescription : {{ $json.body.description }}\nIngrédients : {{ $json.body.ingredients }}\nRecette : {{ $json.body.recipe }}\nNutrition : {{ $json.body.calories }}, {{ $json.body.proteines }}, {{ $json.body.glucides }}, {{ $json.body.lipides }}\nTags actuels : {{ JSON.stringify($json.body.tags || []) }}\n\nModifications Utilisateur :\n{{ $json.body.remark }}",
+        "options": {
+          "systemMessage": "Tu es un chef cuisinier expert ET nutritionniste spécialisé dans la révision et l'adaptation de recettes.\n\nTon rôle : Recevoir une recette existante avec des remarques/modifications de l'utilisateur (en texte libre) et produire une version COMPLÈTEMENT MISE À JOUR de la recette, tout en conservant le même format de sortie professionnel.\n\nCONTEXTE UTILISATEUR :\n- Public cible : Homme de 20 ans\n- Objectif : Alimentation équilibrée\n- Portions : Toujours pour 1 personne\n\nTU VAS RECEVOIR :\n1. La RECETTE PRÉCÉDENTE (titre, description, ingrédients, instructions, nutrition, tags)\n2. Les MODIFICATIONS/REMARQUES de l'utilisateur (texte libre)\n\nRÈGLES DE RÉVISION STRICTES :\n\n1. PRIORITÉ ABSOLUE AUX MODIFICATIONS UTILISATEUR\n   - Si l'utilisateur change un ingrédient, c'est ta NOUVELLE VÉRITÉ\n   - Si l'utilisateur change une quantité, applique-le EXACTEMENT\n   - Si l'utilisateur ajoute/enlève un ingrédient, adapte TOUTE la recette\n\n2. ADAPTATION COMPLÈTE DE LA RECETTE\n   - Si un ingrédient change → adapte les instructions\n   - Si une quantité change → recalcule toutes les autres si nécessaire\n   - Si un style culinaire change → adapte TOUS les ingrédients et épices\n\n3. RECALCUL NUTRITIONNEL OBLIGATOIRE\n   - CHAQUE modification = NOUVEAU calcul des valeurs nutritionnelles\n\n4. MISE À JOUR DES TAGS OBLIGATOIRE\n   Après modification, réévalue et mets à jour les tags. Tiens compte des tags actuels comme base.\n\n   LISTE STRICTE des tags autorisés (utilise UNIQUEMENT ces valeurs exactes) :\n\n   Tags de style (plusieurs possibles) :\n   - Healthy : peu de graisses, riche en légumes/protéines maigres\n   - Prot : plus de 30g de protéines\n   - Pas cher : ingrédients basiques et bon marché\n   - Fancy : présentation soignée, ingrédients premium\n   - Challenge : technique complexe ou temps de préparation long\n   - Confort : plat réconfortant et copieux\n   - Réconfort : plat doux et nostalgique\n   - Favori : conserve ce tag s'il était présent dans les tags actuels\n\n   Tag protéine (exactement 1 obligatoire) :\n   - Poulet : toute volaille\n   - Bœuf : toute viande rouge\n   - Autre : poisson, œufs, tofu, légumineuses, ou aucune protéine animale\n\n   Tag féculent (exactement 1 obligatoire) :\n   - Pâtes : spaghetti, penne, tagliatelles, gnocchis, etc.\n   - Riz : riz blanc, riz complet, risotto, etc.\n   - Autre : pommes de terre, quinoa, pain, couscous, ou aucun féculent\n\n5. VALIDATION DES DEMANDES INCOHÉRENTES\n   - Si la demande est impossible → réponds UNIQUEMENT : PAS OK\n\n6. FORMAT DE SORTIE STRICT\nRéponds UNIQUEMENT avec ce format (pas de texte avant ou après) :\n\nTitre : \n[Titre mis à jour]\n\nDescription : \n[Description mise à jour]\n\nIngrédients :\n[{\"ingredient\":\"nom\",\"quantite\":nombre,\"unite\":\"unité\"}]\n\nRecette :\n1. [Étape 1]\n2. [Étape 2]\n3. ...\n\nNutrition :\n{\n  \"calories\": nombre,\n  \"proteines\": nombre,\n  \"glucides\": nombre,\n  \"lipides\": nombre\n}\n\nTags :\n[\"tag1\", \"tag2\", \"tag3\"]\n\nRÈGLES POUR LE JSON TAGS :\n- Tableau JSON strict avec guillemets doubles\n- Utilise UNIQUEMENT les valeurs exactes de la liste autorisée\n- Toujours 1 tag protéine + 1 tag féculent + au moins 1 tag de style\n- Exemple valide : [\"Confort\", \"Bœuf\", \"Pâtes\"]",
+          "maxIterations": 2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [256, 352],
+      "id": "bb5b3e76-3df2-46a1-be1b-d70389fe5c77",
+      "name": "AI Agent modification"
+    },
+    {
+      "parameters": {
+        "model": "google/gemini-2.0-flash-lite-001",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [208, 528],
+      "id": "9239e448-2ada-4208-9ad8-e561720e0950",
+      "name": "OpenRouter Chat Model1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "aL6h1yYIdQSNzcsb",
+          "name": "OpenRouter maximesothpro Avril"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json.output;\n\n// Fonction pour extraire une section\nfunction extractSection(text, sectionName, nextSection = null) {\n  const regex = new RegExp(`${sectionName}\\\\s*:\\\\s*\\\\n([\\\\s\\\\S]*?)(?=${nextSection ? nextSection + '\\\\s*:' : '$'})`, 'i');\n  const match = text.match(regex);\n  return match ? match[1].trim() : '';\n}\n\n// Extraire les sections\nconst titre = extractSection(input, 'Titre', 'Description');\nconst description = extractSection(input, 'Description', 'Ingrédients');\nconst ingredientsRaw = extractSection(input, 'Ingrédients', 'Recette');\nconst recetteRaw = extractSection(input, 'Recette', 'Nutrition');\nconst nutritionRaw = extractSection(input, 'Nutrition', 'Tags');\nconst tagsRaw = extractSection(input, 'Tags');\n\n// Parser les ingrédients\nlet ingredients = [];\ntry {\n  ingredients = JSON.parse(ingredientsRaw);\n} catch (error) {\n  ingredients = [];\n}\n\n// Parser la nutrition\nlet nutrition = {};\ntry {\n  nutrition = JSON.parse(nutritionRaw);\n} catch (error) {\n  nutrition = {};\n}\n\n// Parser les tags\nlet tags = [];\ntry {\n  const cleaned = tagsRaw.replace(/\\n/g, ' ').trim();\n  tags = JSON.parse(cleaned);\n} catch {\n  const cleaned = tagsRaw.replace(/[\\[\\]]/g, '').trim();\n  tags = cleaned ? cleaned.split(',').map(t => t.trim()).filter(Boolean) : [];\n}\n\n// Parser les étapes de la recette\nconst recetteSteps = recetteRaw\n  .split('\\n')\n  .filter(line => /^\\d+\\./.test(line.trim()))\n  .map(line => line.replace(/^\\d+\\.\\s*/, '').trim());\n\nreturn {\n  titre,\n  description,\n  ingredients: JSON.stringify(ingredients),\n  recette: JSON.stringify(recetteSteps),\n  calories: nutrition.calories || 0,\n  proteines: nutrition.proteines || 0,\n  glucides: nutrition.glucides || 0,\n  lipides: nutrition.lipides || 0,\n  tags\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 352],
+      "id": "26f26447-68c9-4bde-88f0-59b9121798c9",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    title: $input.first().json.titre,\n    description: $input.first().json.description,\n    ingredients: JSON.parse($input.first().json.ingredients),\n    recipe: JSON.parse($input.first().json.recette),\n    calories: $input.first().json.calories,\n    proteines: $input.first().json.proteines,\n    glucides: $input.first().json.glucides,\n    lipides: $input.first().json.lipides,\n    tags: $input.first().json.tags || []\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [752, 0],
+      "id": "b9255caf-ec6c-4017-babc-08bdee761fef",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [928, 352],
+      "id": "7c6717e4-d3f0-4ea1-96e1-be405ba704fa",
+      "name": "Demander confirmation utilisateur1"
+    },
+    {
+      "parameters": {
+        "jsCode": "return {\n  json: {\n    title: $input.first().json.titre,\n    description: $input.first().json.description,\n    ingredients: JSON.parse($input.first().json.ingredients),\n    recipe: JSON.parse($input.first().json.recette),\n    calories: $input.first().json.calories,\n    proteines: $input.first().json.proteines,\n    glucides: $input.first().json.glucides,\n    lipides: $input.first().json.lipides,\n    tags: $input.first().json.tags || []\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [752, 352],
+      "id": "4bd19474-7b75-463a-a38a-b4ad3afce40f",
+      "name": "Code in JavaScript3"
+    }
+  ],
+  "connections": {
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [[{"node": "AI Agent 1ère proposition", "type": "ai_languageModel", "index": 0}]]
+    },
+    "Code in JavaScript": {
+      "main": [[{"node": "Code in JavaScript2", "type": "main", "index": 0}]]
+    },
+    "Create a record": {
+      "main": [[{"node": "Respond to Webhook1", "type": "main", "index": 0}]]
+    },
+    "Modifier la recette": {
+      "main": [[{"node": "AI Agent modification", "type": "main", "index": 0}]]
+    },
+    "Création recette": {
+      "main": [[{"node": "AI Agent 1ère proposition", "type": "main", "index": 0}]]
+    },
+    "Demander confirmation utilisateur": {"main": [[]]},
+    "Recette acceptée": {
+      "main": [[{"node": "Create a record", "type": "main", "index": 0}]]
+    },
+    "AI Agent 1ère proposition": {
+      "main": [[{"node": "Code in JavaScript", "type": "main", "index": 0}]]
+    },
+    "AI Agent modification": {
+      "main": [[{"node": "Code in JavaScript1", "type": "main", "index": 0}]]
+    },
+    "OpenRouter Chat Model1": {
+      "ai_languageModel": [[{"node": "AI Agent modification", "type": "ai_languageModel", "index": 0}]]
+    },
+    "Code in JavaScript1": {
+      "main": [[{"node": "Code in JavaScript3", "type": "main", "index": 0}]]
+    },
+    "Code in JavaScript2": {
+      "main": [[{"node": "Demander confirmation utilisateur", "type": "main", "index": 0}]]
+    },
+    "Code in JavaScript3": {
+      "main": [[{"node": "Demander confirmation utilisateur1", "type": "main", "index": 0}]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bc0a3115b9ff98c1803801917a2326d3438a8c04200a0fd39deb1a2cbfd1fcab"
+  }
+}
