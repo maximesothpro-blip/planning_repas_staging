@@ -4,30 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Planning de Repas</title>
-    <meta name="deploy-timestamp" content="2026-04-14-00-00">
+    <meta name="deploy-timestamp" content="2026-01-15-14-30">
     <link rel="stylesheet" href="planning.css">
 </head>
 <body>
-    <!-- Login Overlay -->
-    <div id="loginOverlay">
-        <div class="login-box">
-            <h1>Planning de Repas</h1>
-            <p class="login-subtitle">Connectez-vous pour accéder à votre planning</p>
-            <form id="loginForm">
-                <div class="login-field">
-                    <label for="loginUsername">Nom d'utilisateur</label>
-                    <input type="text" id="loginUsername" autocomplete="username" required placeholder="ex: maxime">
-                </div>
-                <div class="login-field">
-                    <label for="loginPassword">Mot de passe</label>
-                    <input type="password" id="loginPassword" autocomplete="current-password" required placeholder="••••••••">
-                </div>
-                <div class="login-error" id="loginError"></div>
-                <button type="submit" id="loginSubmitBtn">Se connecter</button>
-            </form>
-        </div>
-    </div>
-
     <!-- Bouton pour rouvrir la sidebar quand elle est cachée -->
     <button class="show-sidebar-btn" id="showSidebar">▲ Recettes</button>
 
@@ -58,13 +38,7 @@
         <!-- Planning -->
         <main class="planning">
             <div class="planning-header">
-                <div style="display:flex; align-items:center; gap:16px;">
-                    <h1>Planning de la Semaine</h1>
-                    <div class="user-bar">
-                        <span id="currentUsername"></span>
-                        <button id="logoutBtn">Déconnexion</button>
-                    </div>
-                </div>
+                <h1>Planning de la Semaine</h1>
                 <div class="header-controls">
                     <div class="week-navigation">
                         <button class="week-nav-btn" id="prevWeek">← Précédent</button>
@@ -177,12 +151,12 @@
 
                 <div class="form-group">
                     <label for="recipeIngredients">Ingrédients</label>
-                    <textarea id="recipeIngredients" name="ingredients" rows="8" required placeholder="Liste des ingrédients (texte libre)"></textarea>
+                    <textarea id="recipeIngredients" name="ingredients" rows="8" placeholder="Liste des ingrédients (texte libre)"></textarea>
                 </div>
 
                 <div class="form-group">
                     <label for="recipeSteps">Recette</label>
-                    <textarea id="recipeSteps" name="recipe" rows="8" required placeholder="Étapes de préparation"></textarea>
+                    <textarea id="recipeSteps" name="recipe" rows="8" placeholder="Étapes de préparation"></textarea>
                 </div>
 
                 <button type="submit" class="create-recipe-submit-btn">Créer</button>
@@ -250,6 +224,119 @@
         </div>
     </div>
 
+    <!-- Boutons flottants mobile -->
+    <div class="mobile-fabs">
+        <button class="mobile-fab mobile-fab-create" id="mobileFabCreate">✏️</button>
+        <button class="mobile-fab mobile-fab-shopping" id="mobileFabShopping">🛒</button>
+    </div>
+
+    <!-- Popup liste de courses mobile (bottom sheet) -->
+    <div class="mobile-shopping-popup" id="mobileShoppingPopup">
+        <div class="mobile-shopping-sheet">
+            <div class="mobile-shopping-handle"></div>
+            <div class="mobile-shopping-header">
+                <h3>🛒 Liste de courses</h3>
+                <button class="recipe-picker-close" id="closeMobileShoppingPopup">×</button>
+            </div>
+            <div class="mobile-shopping-body" id="mobileShoppingBody">
+                <p style="text-align:center;color:#999;padding:30px 0;">Aucun ingrédient dans la liste</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup sélection recette mobile (bottom sheet) -->
+    <div class="recipe-picker-popup" id="recipePickerPopup">
+        <div class="recipe-picker-sheet">
+            <div class="recipe-picker-handle"></div>
+            <div class="recipe-picker-header">
+                <h3>Choisir une recette</h3>
+                <button class="recipe-picker-close" id="closeRecipePickerPopup">×</button>
+            </div>
+            <div class="recipe-picker-list" id="recipePickerList"></div>
+            <input type="text" class="recipe-picker-search" id="recipePickerSearch" placeholder="🔍 Rechercher..." inputmode="search">
+        </div>
+    </div>
+
+    <!-- Popup Ajout Rapide (Phase 3) -->
+    <div class="quick-add-popup" id="quickAddPopup">
+        <div class="quick-add-popup-content">
+            <div class="quick-add-header">
+                <h2>⚡ Ajouter rapidement</h2>
+                <button class="close-popup" id="closeQuickAddPopup">×</button>
+            </div>
+            <div id="quickAddBody"></div>
+        </div>
+    </div>
+
+    <!-- Chat IA -->
+    <div class="chat-popup" id="chatPopup">
+        <div class="chat-panel">
+            <div class="chat-header">
+                <div class="chat-header-left">
+                    <button class="chat-new-btn" id="chatNewBtn" title="Nouvelle conversation">↺</button>
+                    <span class="chat-avatar">🤖</span>
+                    <div>
+                        <div class="chat-title">Assistant repas</div>
+                        <div class="chat-subtitle">Planning intelligent de ta semaine</div>
+                    </div>
+                </div>
+                <div class="chat-header-actions">
+                    <button class="close-popup" id="closeChatPopup">×</button>
+                </div>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <!-- Message de bienvenue injecté par JS (resetChat) -->
+            </div>
+            <!-- Barre recettes imposées (toggle) -->
+            <div class="chat-context-bar" id="chatContextBar" style="display:none;">
+                <div class="chat-context-label">📌 Recettes à inclure cette semaine</div>
+                <div class="chat-recipe-selector">
+                    <input type="text" id="chatRecipeSearch" placeholder="Chercher une recette..." autocomplete="off" style="font-size:16px;">
+                    <div class="chat-recipe-dropdown" id="chatRecipeDropdown"></div>
+                </div>
+                <div class="chat-forced-chips" id="chatForcedChips"></div>
+            </div>
+            <div class="chat-input-area">
+                <button class="chat-pin-btn" id="chatPinBtn" title="Recettes imposées">📌</button>
+                <textarea class="chat-input" id="chatInput" placeholder="Décris tes envies ou donne ton avis..." rows="1" style="font-size:16px;"></textarea>
+                <button class="chat-send-btn" id="chatSendBtn">➤</button>
+            </div>
+        </div>
+    </div>
+    <button class="chat-fab" id="chatFab" title="Assistant IA">💬</button>
+
+    <!-- Popup Modifier Planning Proposé -->
+    <div class="mod-proposal-overlay" id="modProposalOverlay" style="display:none">
+        <div class="mod-proposal-popup">
+            <div class="mod-proposal-header">
+                <h3>✏️ Modifier le planning proposé</h3>
+                <button class="mod-proposal-close" id="closeModProposalBtn">×</button>
+            </div>
+            <div class="mod-proposal-tabs">
+                <button class="mod-tab-btn active" data-tab="manual">📋 Manuel</button>
+                <button class="mod-tab-btn" data-tab="ai">🤖 Chat IA</button>
+            </div>
+            <div class="mod-proposal-content" id="modProposalContent"></div>
+            <div class="mod-proposal-footer">
+                <button class="proposal-act-btn accept" id="applyModProposalBtn">✅ Appliquer les changements</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Popup Ingrédients des Recettes -->
+    <div class="quick-add-popup" id="recipeIngredientsPopup">
+        <div class="quick-add-popup-content">
+            <div class="quick-add-header">
+                <h2>📖 Ingrédients des recettes</h2>
+                <button class="close-popup" id="closeRecipeIngredientsPopup">×</button>
+            </div>
+            <div style="padding: 10px 18px 0;">
+                <input type="text" id="recipeIngredientsSearch" placeholder="Rechercher un ingrédient..." class="recipe-ing-search">
+            </div>
+            <div id="recipeIngredientsList" style="padding: 10px 18px 20px; max-height: 60vh; overflow-y: auto;"></div>
+        </div>
+    </div>
+
     <!-- Notification popup -->
     <div class="notification-popup" id="notificationPopup">
         <div class="notification-content">
@@ -259,10 +346,133 @@
     </div>
 
     <!-- Version -->
-    <div class="version-info">Version_1</div>
+    <div class="version-info">Staging v2.15 - Chat unifié generate-planning, fix userIntent/servings/frequency backend - 14/04/2026</div>
 
     <script src="config.js"></script>
-    <script src="auth.js"></script>
     <script src="planning.js"></script>
+    <script>
+    // ===== MOBILE LOGIC =====
+    const isMobile = () => window.innerWidth <= 768;
+
+    // --- FAB Créer recette ---
+    document.getElementById('mobileFabCreate').addEventListener('click', () => {
+        document.getElementById('createRecipePopup').classList.add('active');
+    });
+
+    // --- FAB Liste de courses ---
+    document.getElementById('mobileFabShopping').addEventListener('click', () => {
+        // Copier le contenu de shoppingContent dans la popup mobile
+        const src = document.getElementById('shoppingContent').innerHTML;
+        document.getElementById('mobileShoppingBody').innerHTML = src || '<p style="text-align:center;color:#999;padding:30px 0;">Aucun ingrédient dans la liste</p>';
+        document.getElementById('mobileShoppingPopup').classList.add('active');
+    });
+
+    document.getElementById('closeMobileShoppingPopup').addEventListener('click', () => {
+        document.getElementById('mobileShoppingPopup').classList.remove('active');
+    });
+
+    document.getElementById('mobileShoppingPopup').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('mobileShoppingPopup'))
+            document.getElementById('mobileShoppingPopup').classList.remove('active');
+    });
+
+    // --- Picker recettes ---
+    let _pickerSlot = null;
+
+    function openRecipePicker(slot) {
+        _pickerSlot = slot;
+        renderRecipePicker('');
+        document.getElementById('recipePickerSearch').value = '';
+        document.getElementById('recipePickerPopup').classList.add('active');
+    }
+
+    function renderRecipePicker(query) {
+        const list = document.getElementById('recipePickerList');
+        const filtered = (typeof recipes !== 'undefined' ? recipes : []).filter(r =>
+            r.name.toLowerCase().includes(query.toLowerCase())
+        );
+        list.innerHTML = filtered.map(r => `
+            <div class="recipe-picker-item" data-id="${r.id}" data-name="${r.name}">
+                <div class="recipe-picker-item-name">${r.name}</div>
+                <div class="recipe-picker-item-tags">${(r.tags || []).join(', ')}</div>
+            </div>
+        `).join('');
+
+        list.querySelectorAll('.recipe-picker-item').forEach(el => {
+            el.addEventListener('click', () => {
+                const recipeId = el.dataset.id;
+                const recipeName = el.dataset.name;
+                document.getElementById('recipePickerPopup').classList.remove('active');
+                if (_pickerSlot) simulateDrop(_pickerSlot, recipeId, recipeName);
+            });
+        });
+    }
+
+    document.getElementById('recipePickerSearch').addEventListener('input', (e) => {
+        renderRecipePicker(e.target.value);
+    });
+
+    document.getElementById('closeRecipePickerPopup').addEventListener('click', () => {
+        document.getElementById('recipePickerPopup').classList.remove('active');
+    });
+
+    // Simuler un drop depuis le picker
+    async function simulateDrop(slot, recipeId, recipeName) {
+        const day = slot.dataset.day;
+        const meal = slot.dataset.meal;
+        const mealContent = slot.querySelector('.meal-content');
+
+        mealContent.innerHTML = `<div class="planned-recipe"><span class="recipe-name-text">${recipeName}</span></div>`;
+
+        try {
+            const date = getDateForDay(day);
+            const response = await fetch(`${API_URL}/api/planning`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    day, date, meal: meal,
+                    recipeId, week: currentWeek, year: currentYear,
+                    servings: defaultServings
+                })
+            });
+            const data = await response.json();
+            if (data.success && data.record) {
+                const recordId = data.record.id;
+                mealContent.innerHTML = `
+                    <div class="planned-recipe" data-record-id="${recordId}" data-recipe-id="${recipeId}">
+                        <span class="recipe-name-text">${recipeName} <span class="servings-indicator">👤 × ${defaultServings}</span></span>
+                        <button class="delete-recipe-btn" data-record-id="${recordId}">×</button>
+                    </div>`;
+                const deleteBtn = mealContent.querySelector('.delete-recipe-btn');
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteRecipeFromPlanning(recordId, slot);
+                });
+                const plannedDiv = mealContent.querySelector('.planned-recipe');
+                plannedDiv.addEventListener('click', () => {
+                    const recipe = (window.recipes || []).find(r => r.id === recipeId);
+                    if (recipe) showRecipePopup(recipe, { id: recordId, servings: defaultServings });
+                });
+                // Ajouter les ingrédients à la liste de courses
+                const recipeObj = (typeof recipes !== 'undefined' ? recipes : []).find(r => r.id === recipeId);
+                if (recipeObj && typeof addIngredientsToShoppingList === 'function') {
+                    await addIngredientsToShoppingList(recipeObj, defaultServings);
+                }
+            }
+        } catch(err) {
+            console.error('Erreur ajout recette mobile:', err);
+        }
+    }
+
+    // --- Tap sur slot vide → ouvrir picker (mobile uniquement) ---
+    document.getElementById('calendar').addEventListener('click', (e) => {
+        if (!isMobile()) return;
+        const slot = e.target.closest('.meal-slot');
+        if (!slot) return;
+        // Si le slot contient déjà une recette, laisser le click normal gérer
+        if (slot.querySelector('.planned-recipe')) return;
+        openRecipePicker(slot);
+    });
+    </script>
 </body>
 </html>
