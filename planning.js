@@ -1,4 +1,4 @@
-// Planning de Repas - v3.11.3-beta
+// Planning de Repas - Version_1
 // Configuration
 const API_URL = window.BACKEND_API_URL || 'http://localhost:3000';
 
@@ -88,9 +88,7 @@ async function init() {
     // initializeMealInclusions();
     // v3.9: Load shopping list on startup
     await loadShoppingListOnStartup();
-    initShoppingEventDelegation();
     setupEventListeners();
-    resetChat(); // Injecte le message de bienvenue du chat
 }
 
 // ===== HELPER: Get Monday and Sunday from week number =====
@@ -137,7 +135,7 @@ function updateWeekDisplay() {
 // ===== CHARGER LES RECETTES =====
 async function loadRecipes() {
     try {
-        const response = await fetch(`${API_URL}/api/recipes`);
+        const response = await apiFetch(`${API_URL}/api/recipes`);
         const data = await response.json();
 
         if (data.success) {
@@ -153,7 +151,7 @@ async function loadRecipes() {
 // ===== CHARGER LE PLANNING =====
 async function loadPlanning() {
     try {
-        const response = await fetch(`${API_URL}/api/planning?week=${currentWeek}&year=${currentYear}`);
+        const response = await apiFetch(`${API_URL}/api/planning?week=${currentWeek}&year=${currentYear}`);
         const data = await response.json();
 
         if (data.success) {
@@ -176,7 +174,7 @@ async function loadPlanningForWeek(week, year) {
     }
 
     try {
-        const response = await fetch(`${API_URL}/api/planning?week=${week}&year=${year}`);
+        const response = await apiFetch(`${API_URL}/api/planning?week=${week}&year=${year}`);
         const data = await response.json();
 
         if (data.success) {
@@ -441,7 +439,7 @@ async function handleDrop(e) {
     try {
         const date = getDateForDay(day);
 
-        const response = await fetch(`${API_URL}/api/planning`, {
+        const response = await apiFetch(`${API_URL}/api/planning`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -541,7 +539,7 @@ async function deleteRecipeFromPlanning(recordId, slot) {
             console.log('❌ No planning item or recipe found!');
         }
 
-        const response = await fetch(`${API_URL}/api/planning/${recordId}`, {
+        const response = await apiFetch(`${API_URL}/api/planning/${recordId}`, {
             method: 'DELETE'
         });
 
@@ -699,7 +697,7 @@ function setupPopupServingsControl(recipe, recordId) {
             // Get old servings before updating
             const oldServings = parseInt(servingsInput.value);
 
-            const response = await fetch(`${API_URL}/api/planning/${recordId}`, {
+            const response = await apiFetch(`${API_URL}/api/planning/${recordId}`, {
                 method: 'PATCH',
                 headers: {
                     'Content-Type': 'application/json'
@@ -974,7 +972,7 @@ async function saveShoppingListToAirtable(ingredients, repasInclus, week, year) 
     try {
         setSaveStatus('saving');
 
-        const response = await fetch(`${API_URL}/api/shopping-list`, {
+        const response = await apiFetch(`${API_URL}/api/shopping-list`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1022,7 +1020,7 @@ async function updateShoppingListInAirtable(listId, ingredients, repasInclus, na
             body.nom = name;
         }
 
-        const response = await fetch(`${API_URL}/api/shopping-list/${listId}`, {
+        const response = await apiFetch(`${API_URL}/api/shopping-list/${listId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json'
@@ -1050,7 +1048,7 @@ async function updateShoppingListInAirtable(listId, ingredients, repasInclus, na
 async function loadShoppingListFromAirtable(week, year) {
     try {
         // Get all shopping lists and find the one matching week/year
-        const response = await fetch(`${API_URL}/api/shopping-lists`);
+        const response = await apiFetch(`${API_URL}/api/shopping-lists`);
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -1085,7 +1083,7 @@ async function loadShoppingListFromAirtable(week, year) {
 // Delete shopping list from Airtable
 async function deleteShoppingListFromAirtable(listId) {
     try {
-        const response = await fetch(`${API_URL}/api/shopping-list/${listId}`, {
+        const response = await apiFetch(`${API_URL}/api/shopping-list/${listId}`, {
             method: 'DELETE'
         });
 
@@ -1181,7 +1179,7 @@ async function initializeShoppingList() {
 // Create empty shopping list for new week
 async function createEmptyShoppingList(week, year) {
     try {
-        const response = await fetch(`${API_URL}/api/shopping-list`, {
+        const response = await apiFetch(`${API_URL}/api/shopping-list`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1214,29 +1212,13 @@ async function createEmptyShoppingList(week, year) {
 // Display shopping list from Airtable (not from cache)
 async function displayShoppingListFromAirtable() {
     try {
-        // VERSION_1 TEST: Liste d'exemple statique pour tester les styles
-        const ingredients = [
-            { name: "Tomates", quantity: 4, unit: "", category: "Fruits & Légumes" },
-            { name: "Oignons", quantity: 2, unit: "", category: "Fruits & Légumes" },
-            { name: "Carottes", quantity: 500, unit: "g", category: "Fruits & Légumes" },
-            { name: "Poulet", quantity: 800, unit: "g", category: "Viandes & Poissons" },
-            { name: "Saumon", quantity: 400, unit: "g", category: "Viandes & Poissons" },
-            { name: "Pâtes", quantity: 500, unit: "g", category: "Épicerie" },
-            { name: "Riz", quantity: 300, unit: "g", category: "Épicerie" },
-            { name: "Huile d'olive", quantity: 1, unit: "bouteille", category: "Épicerie" },
-            { name: "Lait", quantity: 1, unit: "L", category: "Produits laitiers" },
-            { name: "Fromage râpé", quantity: 200, unit: "g", category: "Produits laitiers" }
-        ];
-
-        // CODE ORIGINAL COMMENTÉ
-        /*
         if (!currentShoppingListId) {
             shoppingContent.innerHTML = '<p class="empty-shopping">Aucune liste de courses disponible.</p>';
             return;
         }
 
         // Fetch list from Airtable
-        const response = await fetch(`${API_URL}/api/shopping-list/${currentShoppingListId}`);
+        const response = await apiFetch(`${API_URL}/api/shopping-list/${currentShoppingListId}`);
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -1247,20 +1229,13 @@ async function displayShoppingListFromAirtable() {
 
         // Parse ingredients JSON
         const ingredients = JSON.parse(list.ingredientsJSON || '[]');
-        */
 
-        console.log('VERSION_1 TEST: Displaying example shopping list:', ingredients.length, 'items');
+        console.log('Displaying shopping list from Airtable:', ingredients.length, 'items');
 
-        // VERSION_1 TEST: Nom de liste statique
-        const listName = "Liste de Test - Design V1";
-
-        // CODE ORIGINAL COMMENTÉ
-        /*
         if (ingredients.length === 0) {
             shoppingContent.innerHTML = '<p class="empty-shopping">Aucun repas planifié pour cette semaine.</p>';
             return;
         }
-        */
 
         // Group by category
         const byCategory = {};
@@ -1271,11 +1246,8 @@ async function displayShoppingListFromAirtable() {
             byCategory[item.category].push(item);
         });
 
-        // CODE ORIGINAL COMMENTÉ
-        /*
         // v3.3.2: Display list name from Airtable (includes "- Modifié" if modified)
         const listName = list.nom || `Liste semaine ${currentWeek} - ${currentYear}`;
-        */
 
         // Generate HTML with categories
         let html = '<div class="shopping-list">';
@@ -1503,7 +1475,7 @@ async function addMealToShoppingList(recipeId) {
             return;
         }
 
-        const response = await fetch(`${API_URL}/api/shopping-list/${currentShoppingListId}`);
+        const response = await apiFetch(`${API_URL}/api/shopping-list/${currentShoppingListId}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -1590,7 +1562,7 @@ async function loadMealInclusionsFromAirtable() {
         }
 
         // Fetch current shopping list
-        const response = await fetch(`${API_URL}/api/shopping-list/${currentShoppingListId}`);
+        const response = await apiFetch(`${API_URL}/api/shopping-list/${currentShoppingListId}`);
         const data = await response.json();
 
         if (data.success) {
@@ -1801,7 +1773,7 @@ async function displayEditableShoppingListFromAirtable() {
         }
 
         // Fetch current shopping list from Airtable
-        const response = await fetch(`${API_URL}/api/shopping-list/${currentShoppingListId}`);
+        const response = await apiFetch(`${API_URL}/api/shopping-list/${currentShoppingListId}`);
         const data = await response.json();
 
         if (!data.success) {
@@ -2375,7 +2347,7 @@ async function displayShoppingHistory() {
         console.log('Loading shopping history...');
 
         // Fetch all shopping lists
-        const response = await fetch(`${API_URL}/api/shopping-lists`);
+        const response = await apiFetch(`${API_URL}/api/shopping-lists`);
         const data = await response.json();
 
         if (!data.success) {
@@ -2442,7 +2414,7 @@ async function showHistoricalList(listId) {
         console.log('Loading historical list:', listId);
 
         // Fetch list from Airtable
-        const response = await fetch(`${API_URL}/api/shopping-list/${listId}`);
+        const response = await apiFetch(`${API_URL}/api/shopping-list/${listId}`);
         const data = await response.json();
 
         if (!data.success) {
@@ -2524,7 +2496,6 @@ historyPopup.addEventListener('click', (e) => {
 // Simple shopping list: add ingredients to Airtable, sum if exists, display raw JSON
 
 let currentListId = null; // ID of the current week's shopping list in Airtable
-let currentShoppingIngredients = []; // Global pour event delegation (buttons mobiles)
 
 // Get or create shopping list for current week
 async function getOrCreateShoppingList(week, year) {
@@ -2532,7 +2503,7 @@ async function getOrCreateShoppingList(week, year) {
         console.log(`📋 Getting shopping list for week ${week}-${year}`);
 
         // Try to find existing list for this week
-        const response = await fetch(`${API_URL}/api/shopping-lists`);
+        const response = await apiFetch(`${API_URL}/api/shopping-lists`);
         const data = await response.json();
 
         if (data.success) {
@@ -2549,7 +2520,7 @@ async function getOrCreateShoppingList(week, year) {
 
         // Create new list if not found
         console.log(`✓ Creating new list for week ${week}-${year}`);
-        const createResponse = await fetch(`${API_URL}/api/shopping-list`, {
+        const createResponse = await apiFetch(`${API_URL}/api/shopping-list`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2616,7 +2587,7 @@ async function addIngredientsToShoppingList(recipe, servings) {
         });
 
         // Update list in Airtable
-        const updateResponse = await fetch(`${API_URL}/api/shopping-list/${currentListId}`, {
+        const updateResponse = await apiFetch(`${API_URL}/api/shopping-list/${currentListId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2636,518 +2607,53 @@ async function addIngredientsToShoppingList(recipe, servings) {
     }
 }
 
-// Formater la plage de dates de la semaine courante (ex: "7 - 13 avr. 2026")
-function getShoppingDateRange() {
-    const { monday, sunday } = getWeekDates(currentWeek, currentYear);
-    const months = ['jan.', 'fév.', 'mar.', 'avr.', 'mai', 'juin',
-                    'juil.', 'août', 'sep.', 'oct.', 'nov.', 'déc.'];
-    const year = sunday.getFullYear();
-    if (monday.getMonth() === sunday.getMonth()) {
-        return `${monday.getDate()} - ${sunday.getDate()} ${months[monday.getMonth()]} ${year}`;
-    }
-    return `${monday.getDate()} ${months[monday.getMonth()]} - ${sunday.getDate()} ${months[sunday.getMonth()]} ${year}`;
-}
-
-// Calcul du pas pour les boutons +/-
-function getQuantityStep(unit) {
-    if (!unit || unit === 'unité') return 1;
-    const u = unit.toLowerCase();
-    if (u === 'kg' || u === 'l') return 0.1;
-    if (u === 'g' || u === 'ml' || u === 'cl') return 10;
-    return 1;
-}
-
-// Display raw JSON in shopping tab (render only — interactions handled by initShoppingEventDelegation)
-function displayRawShoppingList(ingredientsInput) {
-    if (!ingredientsInput) ingredientsInput = [];
-
-    // Initialiser section si manquante + stocker en global pour la délégation
-    ingredientsInput.forEach(ing => {
-        if (!ing.section) ing.section = (ing.category === 'Épicerie') ? 'stock' : 'main';
-    });
-    currentShoppingIngredients = ingredientsInput;
-
-    const mainItems = ingredientsInput.filter(ing => ing.section !== 'stock');
-    const stockItems = ingredientsInput.filter(ing => ing.section === 'stock');
-
-    function groupByCategory(items) {
-        const byCategory = {};
-        items.forEach(ing => {
-            const cat = ing.category || 'Autres';
-            if (!byCategory[cat]) byCategory[cat] = [];
-            byCategory[cat].push(ing);
-        });
-        return byCategory;
-    }
-
-    const dateRange = getShoppingDateRange();
-
-    function renderMainItem(ing, idx) {
-        const qty = Math.round(ing.quantity * 100) / 100;
-        const unitStr = ing.unit && ing.unit !== 'unité' ? ' ' + ing.unit : '';
-        return `<li class="shopping-item">
-            <div class="item-qty-controls">
-                <button class="qty-btn qty-minus" data-idx="${idx}">−</button>
-                <span class="qty-value">${qty}${unitStr}</span>
-                <button class="qty-btn qty-plus" data-idx="${idx}">+</button>
-            </div>
-            <span class="item-name">${ing.name}</span>
-            <button class="item-to-stock-btn" data-idx="${idx}" title="Mettre en stock">→ stock</button>
-        </li>`;
-    }
-
-    function renderStockItem(ing, idx) {
-        const qty = Math.round(ing.quantity * 100) / 100;
-        const unitStr = ing.unit && ing.unit !== 'unité' ? ' ' + ing.unit : '';
-        return `<li class="shopping-stock-item">
-            <button class="item-from-stock-btn" data-idx="${idx}" title="Remettre dans la liste">↩</button>
-            <span class="stock-qty">${qty}${unitStr}</span>
-            <span class="item-name">${ing.name}</span>
-        </li>`;
-    }
-
-    const mainByCategory = groupByCategory(mainItems);
-    let mainHtml = '';
-    Object.keys(mainByCategory).sort().forEach(cat => {
-        const items = [...mainByCategory[cat]].sort((a, b) => a.name.localeCompare(b.name));
-        mainHtml += `<div class="shopping-category"><h4>${cat}</h4><ul>`;
-        items.forEach(ing => mainHtml += renderMainItem(ing, ingredientsInput.indexOf(ing)));
-        mainHtml += '</ul></div>';
-    });
-
-    let stockHtml = '';
-    if (stockItems.length > 0) {
-        const sortedStock = [...stockItems].sort((a, b) => a.name.localeCompare(b.name));
-        stockHtml = `<div class="shopping-a-verifier">
-            <div class="a-verifier-header">⚠️ À vérifier / En stock</div>
-            <ul>`;
-        sortedStock.forEach(ing => stockHtml += renderStockItem(ing, ingredientsInput.indexOf(ing)));
-        stockHtml += '</ul></div>';
-    }
-
-    const emptyMsg = mainItems.length === 0 && stockItems.length === 0
-        ? `<p class="empty-shopping">Aucun ingrédient — ajoutez des repas au planning ou utilisez ⚡ Ajouter</p>`
-        : '';
-
-    const html = `
-        <div class="shopping-list-header">
-            <h3>${dateRange}</h3>
-            <div class="shopping-header-btns">
-                <button class="shopping-quick-add-btn" title="Ajouter rapidement">⚡ Ajouter</button>
-                <button class="shopping-copy-btn" title="Copier la liste">📋</button>
-            </div>
-        </div>
-        ${emptyMsg}
-        <div class="shopping-list">${mainHtml}</div>
-        ${stockHtml}
-    `;
-
+// Display raw JSON in shopping tab
+function displayRawShoppingList(ingredients) {
     const shoppingContent = document.getElementById('shoppingContent');
+
+    if (!ingredients || ingredients.length === 0) {
+        shoppingContent.innerHTML = '<p class="empty-shopping">Aucun ingrédient dans la liste</p>';
+        return;
+    }
+
+    // Group by category
+    const byCategory = {};
+    ingredients.forEach(ing => {
+        const cat = ing.category || 'Autres';
+        if (!byCategory[cat]) {
+            byCategory[cat] = [];
+        }
+        byCategory[cat].push(ing);
+    });
+
+    // Sort categories alphabetically
+    const sortedCategories = Object.keys(byCategory).sort();
+
+    // Build HTML
+    let html = '<div class="shopping-list-organized">';
+
+    sortedCategories.forEach(category => {
+        html += `<div class="ingredient-category">`;
+        html += `<h4>${category}</h4>`;
+        html += `<ul class="ingredients-list">`;
+
+        // Sort ingredients by name within category
+        byCategory[category].sort((a, b) => a.name.localeCompare(b.name));
+
+        byCategory[category].forEach(ing => {
+            const quantity = Math.round(ing.quantity * 100) / 100; // 2 decimals
+            html += `<li>`;
+            html += `<span class="ingredient-quantity">${quantity}${ing.unit}</span> `;
+            html += `<span class="ingredient-name">${ing.name}</span>`;
+            html += `</li>`;
+        });
+
+        html += `</ul></div>`;
+    });
+
+    html += '</div>';
+
     shoppingContent.innerHTML = html;
-
-    // Sync vers popup mobile si ouverte (innerHTML suffit car délégation sur le container)
-    const mobilePopup = document.getElementById('mobileShoppingPopup');
-    const mobileBody = document.getElementById('mobileShoppingBody');
-    if (mobileBody && mobilePopup && mobilePopup.classList.contains('active')) {
-        mobileBody.innerHTML = html;
-    }
-}
-
-// ===== PHASE 3 : AJOUT RAPIDE =====
-const QUICK_ADD_ITEMS = {
-    '🥗 Alimentaire': [
-        { name: 'Oeufs', quantity: 6, unit: 'pièce', category: 'Autre' },
-        { name: 'Lait', quantity: 1, unit: 'L', category: 'Produits Laitiers' },
-        { name: 'Pain', quantity: 1, unit: 'pièce', category: 'Féculents' },
-        { name: 'Beurre', quantity: 250, unit: 'g', category: 'Produits Laitiers' },
-        { name: 'Yaourt', quantity: 4, unit: 'pièce', category: 'Produits Laitiers' },
-        { name: 'Jus d\'orange', quantity: 1, unit: 'L', category: 'Boissons' },
-        { name: 'Céréales', quantity: 500, unit: 'g', category: 'Féculents' },
-        { name: 'Café', quantity: 250, unit: 'g', category: 'Épicerie' },
-        { name: 'Thé', quantity: 1, unit: 'boîte', category: 'Épicerie' },
-        { name: 'Confiture', quantity: 1, unit: 'pot', category: 'Épicerie' },
-        { name: 'Fromage blanc', quantity: 500, unit: 'g', category: 'Produits Laitiers' },
-        { name: 'Banane', quantity: 4, unit: 'pièce', category: 'Fruits & Légumes' },
-        { name: 'Jus de pomme', quantity: 1, unit: 'L', category: 'Boissons' },
-    ],
-    '🏠 Autre': [
-        { name: 'Liquide vaisselle', quantity: 1, unit: 'bouteille', category: 'Entretien' },
-        { name: 'Éponge', quantity: 2, unit: 'pièce', category: 'Entretien' },
-        { name: 'Sac poubelle', quantity: 1, unit: 'rouleau', category: 'Entretien' },
-        { name: 'Papier toilette', quantity: 1, unit: 'paquet', category: 'Entretien' },
-        { name: 'Lessive', quantity: 1, unit: 'bouteille', category: 'Entretien' },
-        { name: 'Produit ménager', quantity: 1, unit: 'bouteille', category: 'Entretien' },
-        { name: 'Essuie-tout', quantity: 1, unit: 'rouleau', category: 'Entretien' },
-        { name: 'Savon mains', quantity: 1, unit: 'flacon', category: 'Entretien' },
-        { name: 'Gel douche', quantity: 1, unit: 'flacon', category: 'Entretien' },
-        { name: 'Shampoing', quantity: 1, unit: 'flacon', category: 'Entretien' },
-    ]
-};
-
-// Convertit la catégorie Airtable ("Alimentaire"/"Autre") vers la clé UI avec emoji
-function airtableCatToUiCat(cat) {
-    return cat === 'Autre' ? '🏠 Autre' : '🥗 Alimentaire';
-}
-// Convertit la clé UI vers la catégorie Airtable propre
-function uiCatToAirtableCat(uiCat) {
-    return uiCat.includes('Autre') ? 'Autre' : 'Alimentaire';
-}
-
-async function openQuickAddPopup() {
-    // Fermer popup mobile shopping si ouvert
-    document.getElementById('mobileShoppingPopup')?.classList.remove('active');
-
-    const popup = document.getElementById('quickAddPopup');
-    const body = document.getElementById('quickAddBody');
-    if (!popup || !body) return;
-
-    document.getElementById('closeQuickAddPopup').onclick = () => popup.classList.remove('active');
-    popup.onclick = (e) => { if (e.target === popup) popup.classList.remove('active'); };
-
-    // Afficher état de chargement
-    body.innerHTML = '<p style="text-align:center;padding:30px;color:#9ca3af;">Chargement...</p>';
-    popup.classList.add('active');
-
-    // Charger les items custom depuis Airtable
-    const customByCategory = {}; // { uiCatKey: [{ id, name, quantity, unit, category }] }
-    try {
-        const resp = await fetch(`${API_URL}/api/quick-items`);
-        const data = await resp.json();
-        if (data.success) {
-            data.items.forEach(item => {
-                const uiCat = airtableCatToUiCat(item.category);
-                if (!customByCategory[uiCat]) customByCategory[uiCat] = [];
-                customByCategory[uiCat].push(item);
-            });
-        }
-    } catch(e) { console.error('Failed to load quick items from Airtable:', e); }
-
-    const UNITS = ['pièce','g','kg','L','ml','cl','bouteille','paquet','boîte','pot','rouleau','flacon'];
-    const unitOptions = UNITS.map(u => `<option value="${u}">${u}</option>`).join('');
-
-    let html = `<button class="recipe-ingredients-btn" id="openRecipeIngredientsBtn">📖 Ajouter aliments présents dans les recettes</button>`;
-
-    Object.entries(QUICK_ADD_ITEMS).forEach(([uiCategory, baseItems]) => {
-        const customItems = customByCategory[uiCategory] || [];
-        const allItems = [...baseItems.map(i => ({ ...i, isCustom: false })),
-                         ...customItems.map(i => ({ ...i, isCustom: true }))];
-
-        html += `<div class="quick-add-section">
-            <h4 class="quick-add-category">${uiCategory}</h4>
-            <div class="quick-add-grid">`;
-
-        allItems.forEach(item => {
-            const alreadyIn = currentShoppingIngredients.some(s => s.name === item.name && s.section !== 'stock');
-            const currentQty = alreadyIn ? currentShoppingIngredients.find(s => s.name === item.name && s.section !== 'stock')?.quantity : null;
-            html += `<div class="quick-add-item-wrapper ${item.isCustom ? 'is-custom' : ''}">
-                <button class="quick-add-item ${alreadyIn ? 'already-added' : ''}"
-                    data-name="${item.name}" data-qty="${item.quantity}" data-unit="${item.unit}" data-cat="${uiCategory}">
-                    <span class="quick-add-item-label">${item.name}</span>
-                    ${alreadyIn ? `<span class="quick-add-check">✓</span><input type="number" class="quick-add-inline-qty" value="${currentQty}" min="0.1" step="0.1">` : ''}
-                </button>
-                ${item.isCustom ? `<button class="quick-add-delete-btn" data-airtable-id="${item.id}" title="Supprimer">×</button>` : ''}
-            </div>`;
-        });
-
-        html += `</div>
-            <div class="quick-add-custom-row">
-                <input type="text" class="quick-add-custom-name" placeholder="Autre produit..." data-cat="${uiCategory}">
-                <select class="quick-add-custom-unit">${unitOptions}</select>
-                <button class="quick-add-custom-btn" data-cat="${uiCategory}">＋</button>
-            </div>
-        </div>`;
-    });
-
-    body.innerHTML = html;
-
-    // Bouton "Depuis les recettes"
-    document.getElementById('openRecipeIngredientsBtn')?.addEventListener('click', () => {
-        popup.classList.remove('active');
-        openRecipeIngredientsPopup();
-    });
-
-    // Clics sur les items
-    body.querySelectorAll('.quick-add-item').forEach(btn => {
-        btn.addEventListener('click', e => {
-            if (e.target.classList.contains('quick-add-inline-qty')) return;
-            e.stopPropagation();
-            const name = btn.dataset.name;
-            const qty = parseFloat(btn.dataset.qty);
-            const unit = btn.dataset.unit;
-            const cat = btn.dataset.cat;
-            const existing = currentShoppingIngredients.find(s => s.name === name && s.unit === unit && s.section !== 'stock');
-
-            if (btn.classList.contains('already-added')) {
-                if (existing) currentShoppingIngredients.splice(currentShoppingIngredients.indexOf(existing), 1);
-                btn.classList.remove('already-added');
-                btn.querySelector('.quick-add-check')?.remove();
-                btn.querySelector('.quick-add-inline-qty')?.remove();
-            } else {
-                currentShoppingIngredients.push({ name, quantity: qty, unit, category: cat, section: 'main' });
-                btn.classList.add('already-added');
-                btn.insertAdjacentHTML('beforeend', `<span class="quick-add-check">✓</span><input type="number" class="quick-add-inline-qty" value="${qty}" min="0.1" step="0.1">`);
-                const qtyInput = btn.querySelector('.quick-add-inline-qty');
-                qtyInput.addEventListener('click', e => e.stopPropagation());
-                qtyInput.addEventListener('change', () => {
-                    const ing = currentShoppingIngredients.find(s => s.name === name && s.unit === unit && s.section !== 'stock');
-                    if (ing) ing.quantity = parseFloat(qtyInput.value) || qty;
-                    displayRawShoppingList(currentShoppingIngredients);
-                    saveCurrentIngredients();
-                });
-            }
-            displayRawShoppingList(currentShoppingIngredients);
-            saveCurrentIngredients();
-        });
-    });
-
-    // Ajouter produit custom → Airtable
-    body.querySelectorAll('.quick-add-custom-btn').forEach(btn => {
-        const row = btn.closest('.quick-add-custom-row');
-        const doAdd = async () => {
-            const nameInput = row.querySelector('.quick-add-custom-name');
-            const unitSelect = row.querySelector('.quick-add-custom-unit');
-            const name = nameInput.value.trim();
-            const unit = unitSelect.value;
-            const uiCat = btn.dataset.cat;
-            const airtableCat = uiCatToAirtableCat(uiCat);
-            if (!name) return;
-            btn.disabled = true;
-            btn.textContent = '…';
-            try {
-                const resp = await fetch(`${API_URL}/api/quick-items`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, quantity: 1, unit, category: airtableCat })
-                });
-                const data = await resp.json();
-                if (data.success) {
-                    // Ajouter aussi à la liste de courses
-                    currentShoppingIngredients.push({ name, quantity: 1, unit, category: uiCat, section: 'main' });
-                    displayRawShoppingList(currentShoppingIngredients);
-                    saveCurrentIngredients();
-                    nameInput.value = '';
-                    openQuickAddPopup(); // Re-render avec nouveaux items
-                }
-            } catch(ex) {
-                console.error('Failed to save quick item:', ex);
-                btn.disabled = false;
-                btn.textContent = '＋';
-            }
-        };
-        btn.addEventListener('click', doAdd);
-        row.querySelector('.quick-add-custom-name').addEventListener('keydown', e => { if (e.key === 'Enter') doAdd(); });
-    });
-
-    // Supprimer item custom → Airtable
-    body.querySelectorAll('.quick-add-delete-btn').forEach(btn => {
-        btn.addEventListener('click', async e => {
-            e.stopPropagation();
-            const airtableId = btn.dataset.airtableId;
-            btn.textContent = '…';
-            try {
-                await fetch(`${API_URL}/api/quick-items/${airtableId}`, { method: 'DELETE' });
-                openQuickAddPopup(); // Re-render
-            } catch(ex) {
-                console.error('Failed to delete quick item:', ex);
-                btn.textContent = '×';
-            }
-        });
-    });
-}
-
-function saveCurrentIngredients() {
-    const listId = currentListId || currentShoppingListId;
-    if (!listId) return;
-    fetch(`${API_URL}/api/shopping-list/${listId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ingredients: currentShoppingIngredients })
-    }).catch(err => console.error('Save error:', err));
-}
-
-function openRecipeIngredientsPopup() {
-    const popup = document.getElementById('recipeIngredientsPopup');
-    const list = document.getElementById('recipeIngredientsList');
-    const searchInput = document.getElementById('recipeIngredientsSearch');
-    if (!popup || !list || !searchInput) return;
-
-    // Extraire tous les ingrédients uniques de toutes les recettes
-    const ingredientMap = {};
-    (typeof recipes !== 'undefined' ? recipes : []).forEach(recipe => {
-        try {
-            let ings = typeof recipe.ingredients === 'string'
-                ? JSON.parse(recipe.ingredients)
-                : (Array.isArray(recipe.ingredients) ? recipe.ingredients : []);
-            ings.forEach(ing => {
-                const name = (ing.ingredient || ing.nom || '').trim();
-                if (!name) return;
-                const key = name.toLowerCase();
-                if (!ingredientMap[key]) ingredientMap[key] = { name, unit: ing.unite || 'unité', category: categorizeIngredient(name) };
-            });
-        } catch(e) {}
-    });
-    const allIngredients = Object.values(ingredientMap).sort((a, b) => a.name.localeCompare(b.name));
-
-    function renderList(query) {
-        const filtered = allIngredients.filter(i => i.name.toLowerCase().includes(query.toLowerCase()));
-        if (filtered.length === 0) {
-            list.innerHTML = '<p class="empty-shopping">Aucun ingrédient trouvé</p>';
-            return;
-        }
-        list.innerHTML = filtered.map(ing => `
-            <div class="recipe-ing-item">
-                <span class="recipe-ing-name">${ing.name}${ing.unit && ing.unit !== 'unité' ? ` <span class="recipe-ing-unit">${ing.unit}</span>` : ''}</span>
-                <button class="recipe-ing-add-btn" data-name="${ing.name}" data-unit="${ing.unit}" data-cat="${ing.category}">＋</button>
-            </div>
-        `).join('');
-
-        list.querySelectorAll('.recipe-ing-add-btn').forEach(addBtn => {
-            addBtn.addEventListener('click', () => {
-                const name = addBtn.dataset.name;
-                const unit = addBtn.dataset.unit || 'unité';
-                const cat = addBtn.dataset.cat;
-                const existing = currentShoppingIngredients.find(s => s.name === name && s.section !== 'stock');
-                if (existing) {
-                    existing.quantity += 1;
-                } else {
-                    currentShoppingIngredients.push({ name, quantity: 1, unit, category: cat, section: 'main' });
-                }
-                addBtn.textContent = '✓';
-                addBtn.classList.add('added');
-                setTimeout(() => { addBtn.textContent = '＋'; addBtn.classList.remove('added'); }, 1500);
-                displayRawShoppingList(currentShoppingIngredients);
-                saveCurrentIngredients();
-            });
-        });
-    }
-
-    renderList('');
-    searchInput.value = '';
-    searchInput.oninput = () => renderList(searchInput.value);
-    popup.classList.add('active');
-    const closeAndBack = () => { popup.classList.remove('active'); openQuickAddPopup(); };
-    document.getElementById('closeRecipeIngredientsPopup').onclick = closeAndBack;
-    popup.onclick = (e) => { if (e.target === popup) closeAndBack(); };
-}
-
-// Initialiser les interactions shopping par délégation (une seule fois au démarrage)
-function initShoppingEventDelegation() {
-    function buildShoppingCopyText() {
-        const ings = currentShoppingIngredients;
-        const dateRange = getShoppingDateRange();
-        const mainItems = ings.filter(ing => ing.section !== 'stock');
-        const stockItems = ings.filter(ing => ing.section === 'stock');
-
-        const byCategory = {};
-        mainItems.forEach(ing => {
-            const cat = ing.category || 'Autres';
-            if (!byCategory[cat]) byCategory[cat] = [];
-            byCategory[cat].push(ing);
-        });
-
-        let text = `🛒 Liste de courses — ${dateRange}\n\n`;
-        Object.keys(byCategory).sort().forEach(cat => {
-            text += `${cat}\n`;
-            [...byCategory[cat]].sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
-                const qty = Math.round(ing.quantity * 100) / 100;
-                const unit = ing.unit && ing.unit !== 'unité' ? ` ${ing.unit}` : '';
-                text += `  • ${qty}${unit} ${ing.name}\n`;
-            });
-            text += '\n';
-        });
-        if (stockItems.length > 0) {
-            text += `⚠️ À vérifier / En stock\n`;
-            [...stockItems].sort((a, b) => a.name.localeCompare(b.name)).forEach(ing => {
-                const qty = Math.round(ing.quantity * 100) / 100;
-                const unit = ing.unit && ing.unit !== 'unité' ? ` ${ing.unit}` : '';
-                text += `  • ${qty}${unit} ${ing.name}\n`;
-            });
-        }
-        return text;
-    }
-
-    function handleShoppingClick(e) {
-        const copyBtn = e.target.closest('.shopping-copy-btn');
-        const quickAddBtn = e.target.closest('.shopping-quick-add-btn');
-        const qtyPlus = e.target.closest('.qty-plus');
-        const qtyMinus = e.target.closest('.qty-minus');
-        const toStock = e.target.closest('.item-to-stock-btn');
-        const fromStock = e.target.closest('.item-from-stock-btn');
-
-        if (!copyBtn && !quickAddBtn && !qtyPlus && !qtyMinus && !toStock && !fromStock) return;
-        e.stopPropagation();
-
-        if (quickAddBtn) {
-            openQuickAddPopup();
-            return;
-        }
-
-        if (copyBtn) {
-            const text = buildShoppingCopyText();
-            const flash = (icon) => { copyBtn.textContent = icon; setTimeout(() => { copyBtn.textContent = '📋'; }, 2000); };
-            const fallback = () => {
-                const ta = document.createElement('textarea');
-                ta.value = text;
-                ta.setAttribute('readonly', '');
-                ta.style.cssText = 'position:fixed;top:0;left:0;width:2em;height:2em;padding:0;border:0;outline:0;background:transparent;';
-                document.body.appendChild(ta);
-                ta.focus();
-                ta.setSelectionRange(0, text.length);
-                let ok = false;
-                try { ok = document.execCommand('copy'); } catch(ex) {}
-                document.body.removeChild(ta);
-                flash(ok ? '✅' : '❌');
-            };
-            if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-                navigator.clipboard.writeText(text).then(() => flash('✅')).catch(fallback);
-            } else {
-                fallback();
-            }
-            return;
-        }
-
-        const btn = qtyPlus || qtyMinus || toStock || fromStock;
-        const idx = parseInt(btn.dataset.idx);
-        if (isNaN(idx) || !currentShoppingIngredients[idx]) return;
-
-        if (qtyMinus) {
-            const ing = currentShoppingIngredients[idx];
-            const step = getQuantityStep(ing.unit);
-            const oldQty = ing.quantity;
-            const newQty = Math.max(0, Math.round((oldQty - step) * 100) / 100);
-            const reduced = Math.round((oldQty - newQty) * 100) / 100;
-            ing.quantity = newQty;
-            // La portion retirée va dans En stock
-            if (reduced > 0) {
-                const existing = currentShoppingIngredients.find(
-                    s => s.name === ing.name && s.unit === ing.unit && s.section === 'stock'
-                );
-                if (existing) {
-                    existing.quantity = Math.round((existing.quantity + reduced) * 100) / 100;
-                } else {
-                    currentShoppingIngredients.push({
-                        name: ing.name, quantity: reduced, unit: ing.unit,
-                        category: ing.category, section: 'stock'
-                    });
-                }
-            }
-        }
-        if (qtyPlus) {
-            const ing = currentShoppingIngredients[idx];
-            const step = getQuantityStep(ing.unit);
-            ing.quantity = Math.round((ing.quantity + step) * 100) / 100;
-        }
-        if (toStock) currentShoppingIngredients[idx].section = 'stock';
-        if (fromStock) currentShoppingIngredients[idx].section = 'main';
-
-        displayRawShoppingList(currentShoppingIngredients);
-        saveCurrentIngredients();
-    }
-
-    const shoppingContent = document.getElementById('shoppingContent');
-    const mobileBody = document.getElementById('mobileShoppingBody');
-    if (shoppingContent) shoppingContent.addEventListener('click', handleShoppingClick);
-    if (mobileBody) mobileBody.addEventListener('click', handleShoppingClick);
 }
 
 // Update shopping list when servings change (+/- buttons)
@@ -3193,7 +2699,7 @@ async function updateShoppingListServings(recipe, oldServings, newServings) {
         });
 
         // Update list in Airtable
-        const updateResponse = await fetch(`${API_URL}/api/shopping-list/${currentListId}`, {
+        const updateResponse = await apiFetch(`${API_URL}/api/shopping-list/${currentListId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3260,7 +2766,7 @@ async function removeIngredientsFromShoppingList(recipe, servings) {
         });
 
         // Update list in Airtable
-        const updateResponse = await fetch(`${API_URL}/api/shopping-list/${currentListId}`, {
+        const updateResponse = await apiFetch(`${API_URL}/api/shopping-list/${currentListId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -3341,7 +2847,7 @@ createRecipeForm.addEventListener('submit', async (e) => {
         recipePreview.style.display = 'none';
 
         // Send to backend which will forward to n8n
-        const response = await fetch(`${API_URL}/api/create-recipe`, {
+        const response = await apiFetch(`${API_URL}/api/create-recipe`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -3518,7 +3024,7 @@ recipeAcceptBtn.addEventListener('click', async () => {
         console.log('📤 Sending to accept webhook:', currentRecipeData);
         console.log('📤 JSON stringified:', JSON.stringify(currentRecipeData));
 
-        const response = await fetch(`${API_URL}/api/accept-recipe`, {
+        const response = await apiFetch(`${API_URL}/api/accept-recipe`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -3632,7 +3138,7 @@ modifyRecipeForm.addEventListener('submit', async (e) => {
         console.log('📤 Sending complete data to webhook:', dataToSend);
 
         // Call backend to modify recipe
-        const response = await fetch(`${API_URL}/api/modify-recipe`, {
+        const response = await apiFetch(`${API_URL}/api/modify-recipe`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -3673,951 +3179,8 @@ modifyRecipeForm.addEventListener('submit', async (e) => {
     }
 });
 
-// ===== CHAT IA =====
-let chatHistory = [];
-let chatIsLoading = false;
-let selectedStyles = [];
-let forcedRecipes = []; // [{id, name}]
-let proposedPlanning = null;
-let proposedChanges = null; // pour mode modify
-let chatOverlayEl = null;
-let selectedServings = 2;
-let selectedFrequency = 1;
-let pendingClarificationMessage = ''; // message en attente de clarification intent
-
-const CHAT_STYLES = [
-    { key: 'Healthy',      label: '🥗 Healthy',     hint: 'Légumes, équilibré, régime' },
-    { key: 'Prot',         label: '💪 Prot',         hint: 'Sport, protéines, muscles' },
-    { key: 'Pas cher',     label: '💸 Pas cher',     hint: 'Budget serré, simple' },
-    { key: 'Fancy',        label: '✨ Fancy',         hint: 'Repas stylés, gastronomique' },
-    { key: 'Challengeant', label: '🎯 Challenge',    hint: 'Nouvelles recettes, sortir de sa zone' },
-    { key: 'Confort',      label: '🏠 Confort',      hint: 'Plats simples et habituels' },
-    { key: 'Réconfort',    label: '🤗 Réconfort',    hint: 'Bons plats qui font plaisir' }
-];
-
-function buildWelcomeHTML() {
-    const styleBtns = CHAT_STYLES.map(s =>
-        `<button class="chat-style-btn" data-style="${s.key}" title="${s.hint}">
-            ${s.label}<span class="style-eye" data-style="${s.key}">👁</span>
-        </button>`
-    ).join('');
-
-    return `
-        <div class="chat-welcome-intro">Comment tu veux manger cette semaine ?</div>
-        <div class="chat-style-grid">${styleBtns}</div>
-        <div class="chat-params-row">
-            <div class="chat-param-group">
-                <div class="chat-param-label">👥 Portions</div>
-                <div class="chat-param-btns">
-                    ${[1,2,3,4].map(v => `<button class="chat-param-btn${v===selectedServings?' active':''}" data-param="servings" data-value="${v}">×${v}</button>`).join('')}
-                </div>
-            </div>
-            <div class="chat-param-group">
-                <div class="chat-param-label">🥡 Leftovers</div>
-                <div class="chat-param-btns">
-                    ${[1,2,3].map(v => `<button class="chat-param-btn${v===selectedFrequency?' active':''}" data-param="frequency" data-value="${v}">×${v}</button>`).join('')}
-                </div>
-            </div>
-        </div>
-        <div class="chat-week-history">
-            <div class="chat-week-label">Semaines passées :</div>
-            <div class="chat-week-btns" id="chatWeekBtns"><span class="chat-week-loading">chargement...</span></div>
-        </div>
-        <div class="chat-generate-wrap" id="chatGenerateWrap" style="display:none;">
-            <button class="chat-generate-btn" id="chatGenerateBtn">✨ Générer le planning</button>
-        </div>`;
-}
-
-async function initChatWeekHistory() {
-    const container = document.getElementById('chatWeekBtns');
-    if (!container) return;
-
-    const weeks = [];
-    let w = currentWeek, y = currentYear;
-    for (let i = 0; i < 4; i++) {
-        w--;
-        if (w < 1) { w = 52; y--; }
-        weeks.push({ week: w, year: y });
-    }
-
-    container.innerHTML = weeks.map(({ week, year }) => {
-        const { monday } = getWeekDates(week, year);
-        const d = new Date(monday);
-        const day = d.getDate();
-        const month = d.toLocaleDateString('fr-FR', { month: 'short' });
-        return `<button class="chat-week-btn" data-week="${week}" data-year="${year}">Sem. ${week} <span>${day} ${month}</span></button>`;
-    }).join('');
-}
-
-async function showWeekPopup(week, year) {
-    showChatOverlay(`<h3>Semaine ${week}</h3><p class="chat-overlay-loading">Chargement...</p>`);
-    try {
-        const res = await fetch(`${window.BACKEND_API_URL}/api/planning?week=${week}&year=${year}`);
-        const data = await res.json();
-        const planningEntries = data.planning || [];
-
-        if (!planningEntries.length) {
-            updateChatOverlay(`<h3>Semaine ${week}</h3><p>Aucun repas planifié cette semaine.</p>`);
-            return;
-        }
-
-        const days = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
-        const byDay = {};
-        planningEntries.forEach(entry => {
-            if (!byDay[entry.day]) byDay[entry.day] = {};
-            const recipeId = Array.isArray(entry.recipe) ? entry.recipe[0] : entry.recipe;
-            const recipeName = recipes.find(r => r.id === recipeId)?.name || '?';
-            byDay[entry.day][entry.meal] = recipeName;
-        });
-
-        const rows = days.map(day => {
-            const dej = byDay[day]?.['Déjeuner'] || '';
-            const din = byDay[day]?.['Dîner'] || '';
-            if (!dej && !din) return '';
-            return `<div class="week-popup-row">
-                <div class="week-popup-day">${day}</div>
-                <div class="week-popup-meals">
-                    ${dej ? `<span>🍽️ ${dej}</span>` : ''}
-                    ${din ? `<span>🌙 ${din}</span>` : ''}
-                </div>
-            </div>`;
-        }).filter(Boolean).join('');
-
-        updateChatOverlay(`<h3>Semaine ${week}</h3><div class="week-popup-rows">${rows}</div>`);
-    } catch(e) {
-        updateChatOverlay(`<h3>Semaine ${week}</h3><p>Erreur de chargement.</p>`);
-    }
-}
-
-async function showStylePreview(styleKey) {
-    const style = CHAT_STYLES.find(s => s.key === styleKey);
-    showChatOverlay(`<h3>${style?.label || styleKey}</h3><p class="chat-overlay-loading">Chargement des recettes...</p>`);
-    try {
-        const res = await fetch(`${window.BACKEND_API_URL}/api/recipes/by-tag/${encodeURIComponent(styleKey)}`);
-        const data = await res.json();
-
-        if (!data.recipes?.length) {
-            updateChatOverlay(`<h3>${style?.label || styleKey}</h3><p>Aucune recette avec ce tag pour l'instant.<br><em>Les recettes sont taguées lors de leur création.</em></p>`);
-            return;
-        }
-
-        const items = data.recipes.map(r =>
-            `<div class="style-preview-item">
-                <strong>${r.name}</strong>
-                ${r.description ? `<span>${r.description}</span>` : ''}
-            </div>`
-        ).join('');
-
-        updateChatOverlay(`<h3>${style?.label || styleKey}</h3><div class="style-preview-list">${items}</div>`);
-    } catch(e) {
-        updateChatOverlay(`<h3>${style?.label || styleKey}</h3><p>Erreur de chargement.</p>`);
-    }
-}
-
-function showChatOverlay(html) {
-    if (chatOverlayEl) chatOverlayEl.remove();
-    chatOverlayEl = document.createElement('div');
-    chatOverlayEl.className = 'chat-overlay';
-    chatOverlayEl.innerHTML = `
-        <div class="chat-overlay-content">
-            <button class="chat-overlay-close">×</button>
-            <div class="chat-overlay-body">${html}</div>
-        </div>`;
-    chatOverlayEl.querySelector('.chat-overlay-close').addEventListener('click', () => {
-        chatOverlayEl.remove(); chatOverlayEl = null;
-    });
-    chatOverlayEl.addEventListener('click', e => {
-        if (e.target === chatOverlayEl) { chatOverlayEl.remove(); chatOverlayEl = null; }
-    });
-    document.getElementById('chatPopup').appendChild(chatOverlayEl);
-}
-
-function updateChatOverlay(html) {
-    if (!chatOverlayEl) return showChatOverlay(html);
-    chatOverlayEl.querySelector('.chat-overlay-body').innerHTML = html;
-}
-
-function toggleStyleSelection(styleKey) {
-    const idx = selectedStyles.indexOf(styleKey);
-    if (idx === -1) selectedStyles.push(styleKey);
-    else selectedStyles.splice(idx, 1);
-
-    document.querySelectorAll(`.chat-style-btn[data-style="${styleKey}"]`).forEach(btn => {
-        btn.classList.toggle('active', selectedStyles.includes(styleKey));
-    });
-    updateGenerateBtn();
-}
-
-function updateGenerateBtn() {
-    const wrap = document.getElementById('chatGenerateWrap');
-    if (!wrap) return;
-    const visible = selectedStyles.length > 0 || forcedRecipes.length > 0;
-    wrap.style.display = visible ? 'block' : 'none';
-    const btn = document.getElementById('chatGenerateBtn');
-    if (btn) btn.textContent = proposedPlanning ? '🔄 Regénérer le planning' : '✨ Générer le planning';
-}
-
-// --- Forced recipes dropdown ---
-let forcedRecipesInited = false;
-function initForcedRecipesSelector() {
-    if (forcedRecipesInited) return;
-    forcedRecipesInited = true;
-
-    const input = document.getElementById('chatRecipeSearch');
-    const dropdown = document.getElementById('chatRecipeDropdown');
-    if (!input || !dropdown) return;
-
-    input.addEventListener('input', () => {
-        const q = input.value.trim().toLowerCase();
-        if (!q) { dropdown.style.display = 'none'; return; }
-
-        const filtered = recipes.filter(r =>
-            r.name.toLowerCase().includes(q) && !forcedRecipes.find(f => f.id === r.id)
-        ).slice(0, 8);
-
-        if (!filtered.length) { dropdown.style.display = 'none'; return; }
-
-        dropdown.innerHTML = filtered.map(r =>
-            `<div class="chat-recipe-option" data-id="${r.id}" data-name="${encodeURIComponent(r.name)}">${r.name}</div>`
-        ).join('');
-        dropdown.style.display = 'block';
-    });
-
-    dropdown.addEventListener('click', e => {
-        const opt = e.target.closest('.chat-recipe-option');
-        if (!opt) return;
-        addForcedRecipe(opt.dataset.id, decodeURIComponent(opt.dataset.name));
-        input.value = '';
-        dropdown.style.display = 'none';
-    });
-
-    document.addEventListener('click', e => {
-        if (!e.target.closest('#chatContextBar')) dropdown.style.display = 'none';
-    });
-}
-
-function addForcedRecipe(id, name) {
-    if (forcedRecipes.find(r => r.id === id)) return;
-    forcedRecipes.push({ id, name });
-    renderForcedChips();
-    updateGenerateBtn();
-}
-
-function removeForcedRecipe(id) {
-    forcedRecipes = forcedRecipes.filter(r => r.id !== id);
-    renderForcedChips();
-    updateGenerateBtn();
-}
-
-function renderForcedChips() {
-    const container = document.getElementById('chatForcedChips');
-    if (!container) return;
-    container.innerHTML = forcedRecipes.map(r =>
-        `<span class="chat-forced-chip">${r.name}<button class="chip-remove" data-id="${r.id}">×</button></span>`
-    ).join('');
-    container.querySelectorAll('.chip-remove').forEach(btn => {
-        btn.addEventListener('click', () => removeForcedRecipe(btn.dataset.id));
-    });
-}
-
-// --- Génération / modification planning ---
-async function generatePlanning(userIntent = null) {
-    if (chatIsLoading) return;
-
-    const promptInput = document.getElementById('chatInput');
-    const prompt = promptInput.value.trim();
-
-    // Si clarification demandée, on utilise le message en attente
-    const effectivePrompt = pendingClarificationMessage || prompt;
-
-    const parts = [];
-    if (selectedStyles.length) parts.push(`Styles : ${selectedStyles.join(', ')}`);
-    if (forcedRecipes.length) parts.push(`Recettes imposées : ${forcedRecipes.map(r => r.name).join(', ')}`);
-    if (effectivePrompt) parts.push(effectivePrompt);
-
-    const userMsg = parts.join(' · ') || 'Génère un planning pour cette semaine';
-
-    promptInput.value = '';
-    promptInput.style.height = 'auto';
-    pendingClarificationMessage = '';
-    chatIsLoading = true;
-    document.getElementById('chatSendBtn').disabled = true;
-
-    if (!userIntent) appendChatMessage('user', userMsg);
-    chatHistory.push({ role: 'user', content: userMsg });
-    showChatTyping();
-
-    try {
-        const res = await fetch(`${window.BACKEND_API_URL}/api/generate-planning`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                styles: selectedStyles,
-                forcedRecipes,
-                prompt: effectivePrompt,
-                currentWeek,
-                currentYear,
-                servings: selectedServings,
-                frequency: selectedFrequency,
-                userIntent,
-                history: chatHistory.slice(-10)
-            })
-        });
-
-        const data = await res.json();
-        removeChatTyping();
-
-        // Cas 1 : clarification requise
-        if (data.needsClarification) {
-            pendingClarificationMessage = effectivePrompt || userMsg;
-            renderClarificationMessage(data.message);
-            chatHistory.push({ role: 'assistant', content: data.message });
-
-        // Cas 2 : mode modify (changes)
-        } else if (data.mode === 'modify' && data.changes) {
-            proposedChanges = data.changes;
-            const messageHtml = (data.message || '').replace(/\n/g, '<br>');
-            renderModifyProposal(data.changes, messageHtml);
-            chatHistory.push({ role: 'assistant', content: data.message || 'Voici les modifications.' });
-
-        // Cas 3 : mode create (planning complet)
-        } else if (data.planning) {
-            proposedPlanning = data.planning;
-            const messageHtml = (data.message || '').replace(/\n/g, '<br>');
-            renderPlanningProposal(data.planning, messageHtml);
-            chatHistory.push({ role: 'assistant', content: data.message || 'Voici le planning proposé.' });
-            updateGenerateBtn();
-
-        // Cas 4 : erreur ou message simple
-        } else {
-            const replyText = data.message || data.error || 'Je n\'ai pas pu générer de planning.';
-            appendChatMessage('assistant', replyText.replace(/\n/g, '<br>'));
-            chatHistory.push({ role: 'assistant', content: replyText });
-        }
-    } catch(err) {
-        removeChatTyping();
-        console.error('❌ Generate planning error:', err);
-        appendChatMessage('assistant', 'Erreur de connexion 😕 Réessaie dans un instant.');
-    }
-
-    chatIsLoading = false;
-    document.getElementById('chatSendBtn').disabled = false;
-}
-
-function renderClarificationMessage(msg) {
-    const bubble = `
-        <div class="chat-clarification-text">${msg}</div>
-        <div class="chat-clarify-btns">
-            <button class="chat-clarify-btn" data-intent="create">🆕 Créer un nouveau planning</button>
-            <button class="chat-clarify-btn" data-intent="modify">✏️ Modifier l'existant</button>
-        </div>`;
-    appendChatMessage('assistant', bubble);
-}
-
-function renderModifyProposal(changes, messageHtml) {
-    const deletes = changes.filter(c => c.action === 'delete').length;
-    const adds = changes.filter(c => c.action === 'add');
-
-    const addRows = adds.map(c =>
-        `<div class="modify-change-item">
-            <span class="modify-change-day">${c.day} ${c.meal}</span>
-            <span class="modify-change-recipe">→ ${c.recipeName}</span>
-        </div>`
-    ).join('');
-
-    const bubble = `
-        ${messageHtml ? `<div class="planning-proposal-msg">${messageHtml}</div>` : ''}
-        <div class="modify-changes-list">${addRows}</div>
-        <div class="planning-proposal-actions">
-            <button class="chat-accept-btn" id="chatAcceptModifyBtn">✅ Appliquer les changements</button>
-        </div>`;
-    appendChatMessage('assistant', bubble);
-}
-
-async function applyPlanningChanges() {
-    if (!proposedChanges) return;
-
-    const btn = document.getElementById('chatAcceptModifyBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ En cours...'; }
-
-    const { monday } = getWeekDates(currentWeek, currentYear);
-    const dayOffsets = { 'Lundi':0,'Mardi':1,'Mercredi':2,'Jeudi':3,'Vendredi':4,'Samedi':5,'Dimanche':6 };
-
-    try {
-        for (const change of proposedChanges) {
-            if (change.action === 'delete') {
-                await fetch(`${window.BACKEND_API_URL}/api/planning/${change.planningEntryId}`, { method: 'DELETE' });
-            } else if (change.action === 'add') {
-                const date = new Date(monday);
-                date.setDate(date.getDate() + (dayOffsets[change.day] || 0));
-                await fetch(`${window.BACKEND_API_URL}/api/planning`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        day: change.day,
-                        date: date.toISOString().split('T')[0],
-                        meal: change.meal,
-                        recipeId: change.recipeId,
-                        week: currentWeek,
-                        year: currentYear,
-                        servings: selectedServings
-                    })
-                });
-            }
-        }
-
-        if (btn) btn.textContent = '✅ Appliqué !';
-        appendChatMessage('assistant', '🎉 Planning mis à jour ! Rechargement...');
-        proposedChanges = null;
-        await fullRefresh();
-
-    } catch(e) {
-        if (btn) { btn.disabled = false; btn.textContent = '✅ Appliquer les changements'; }
-        appendChatMessage('assistant', 'Erreur lors de l\'application 😕');
-    }
-}
-
-async function fullRefresh() {
-    await loadPlanning();
-    displayPlanning();
-    showNotification('Planning mis à jour !');
-}
-
-function reinforceIntent(originalMessage, confirmedIntent) {
-    // Fire-and-forget — pas d'await
-    fetch(`${window.BACKEND_API_URL}/api/reinforce-intent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ originalMessage, confirmedIntent })
-    }).catch(() => {}); // silencieux
-}
-
-function renderPlanningProposal(planning, messageHtml) {
-    const days = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
-    const dayLabels = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
-
-    const rows = days.map((day, i) => {
-        const entry = planning[day];
-        if (!entry) return '';
-        const dej = entry.dejeuner?.name || '—';
-        const din = entry.diner?.name || '—';
-        return `<div class="proposal-day-row">
-            <div class="proposal-day-header">${dayLabels[i]}</div>
-            <div class="proposal-day-meals">
-                <div class="proposal-meal-slot">
-                    <span class="proposal-meal-tag midi">🍽️ Midi</span>
-                    <span class="proposal-meal-name">${dej}</span>
-                </div>
-                <div class="proposal-meal-slot">
-                    <span class="proposal-meal-tag soir">🌙 Soir</span>
-                    <span class="proposal-meal-name">${din}</span>
-                </div>
-            </div>
-        </div>`;
-    }).filter(Boolean).join('');
-
-    const bubble = `
-        ${messageHtml ? `<div class="planning-proposal-msg">${messageHtml}</div>` : ''}
-        <div class="proposal-days-list" id="proposalDaysList">${rows}</div>
-        <div class="planning-proposal-actions">
-            <button class="proposal-act-btn accept" id="chatAcceptBtn">✅ Accepter</button>
-            <button class="proposal-act-btn modify" id="chatModifyProposalBtn">✏️ Modifier</button>
-            <button class="proposal-act-btn cancel" id="chatCancelProposalBtn">✕ Annuler</button>
-        </div>`;
-
-    appendChatMessage('assistant', bubble);
-    setChatReviewMode(true);
-}
-
-// Mode review : masque l'input du chat pendant qu'un planning est proposé
-function setChatReviewMode(active) {
-    const inputArea = document.querySelector('.chat-input-area');
-    const contextBar = document.getElementById('chatContextBar');
-    if (inputArea) inputArea.style.display = active ? 'none' : '';
-    if (contextBar) contextBar.style.display = active ? 'none' : '';
-}
-
-function cancelProposal() {
-    proposedPlanning = null;
-    setChatReviewMode(false);
-    appendChatMessage('assistant', 'Planning annulé. Dis-moi ce que tu veux ou regénère quand tu veux !');
-}
-
-// Met à jour le rendu de la liste des jours dans la bulle existante
-function refreshProposalDaysDisplay() {
-    const list = document.getElementById('proposalDaysList');
-    if (!list || !proposedPlanning) return;
-    const days = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
-    const dayLabels = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
-    list.innerHTML = days.map((day, i) => {
-        const entry = proposedPlanning[day];
-        if (!entry) return '';
-        const dej = entry.dejeuner?.name || '—';
-        const din = entry.diner?.name || '—';
-        return `<div class="proposal-day-row">
-            <div class="proposal-day-header">${dayLabels[i]}</div>
-            <div class="proposal-day-meals">
-                <div class="proposal-meal-slot">
-                    <span class="proposal-meal-tag midi">🍽️ Midi</span>
-                    <span class="proposal-meal-name">${dej}</span>
-                </div>
-                <div class="proposal-meal-slot">
-                    <span class="proposal-meal-tag soir">🌙 Soir</span>
-                    <span class="proposal-meal-name">${din}</span>
-                </div>
-            </div>
-        </div>`;
-    }).filter(Boolean).join('');
-}
-
-// ===== POPUP MODIFIER PLANNING PROPOSÉ =====
-
-function openModProposalPopup() {
-    document.getElementById('modProposalOverlay').style.display = 'flex';
-    switchModProposalTab('manual');
-}
-
-function closeModProposalPopup() {
-    document.getElementById('modProposalOverlay').style.display = 'none';
-    refreshProposalDaysDisplay();
-    // Scroll vers le planning mis à jour
-    const list = document.getElementById('proposalDaysList');
-    if (list) list.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-function switchModProposalTab(tab) {
-    document.querySelectorAll('.mod-tab-btn').forEach(b =>
-        b.classList.toggle('active', b.dataset.tab === tab));
-    const content = document.getElementById('modProposalContent');
-    if (tab === 'manual') renderManualModTab(content);
-    else renderIAModTab(content);
-}
-
-function renderManualModTab(container) {
-    if (!proposedPlanning || !container) return;
-    const days = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
-    const dayLabels = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
-    const moments = [
-        { key: 'dejeuner', label: '🍽️ Midi' },
-        { key: 'diner',    label: '🌙 Soir' }
-    ];
-
-    // Options <select> depuis recipes globaux
-    const opts = recipes.map(r =>
-        `<option value="${r.id}" data-name="${r.name}">${r.name}</option>`
-    ).join('');
-
-    const rows = [];
-    days.forEach((day, i) => {
-        const entry = proposedPlanning[day];
-        if (!entry) return;
-        moments.forEach(({ key, label }) => {
-            const meal = entry[key];
-            if (!meal) return;
-            rows.push(`
-                <div class="manual-mod-row">
-                    <div class="manual-mod-info">
-                        <span class="manual-mod-day">${dayLabels[i]}</span>
-                        <span class="manual-mod-moment">${label}</span>
-                    </div>
-                    <select class="manual-mod-select" data-day="${day}" data-moment="${key}">
-                        <option value="${meal.id}" selected>${meal.name}</option>
-                        ${opts}
-                    </select>
-                    <button class="manual-mod-del" data-day="${day}" data-moment="${key}" title="Supprimer">🗑️</button>
-                </div>`);
-        });
-    });
-
-    container.innerHTML = `<div class="manual-mod-list">${rows.join('')}</div>`;
-
-    // Listeners sélecteurs
-    container.querySelectorAll('.manual-mod-select').forEach(sel => {
-        sel.addEventListener('change', e => {
-            const { day, moment } = e.target.dataset;
-            const opt = e.target.options[e.target.selectedIndex];
-            if (proposedPlanning[day]) {
-                proposedPlanning[day][moment] = { id: opt.value, name: opt.text };
-            }
-        });
-    });
-
-    // Listeners suppression
-    container.querySelectorAll('.manual-mod-del').forEach(btn => {
-        btn.addEventListener('click', e => {
-            const { day, moment } = e.target.dataset;
-            if (proposedPlanning[day]) {
-                proposedPlanning[day][moment] = null;
-                e.target.closest('.manual-mod-row').style.opacity = '0.35';
-                e.target.closest('.manual-mod-row').style.pointerEvents = 'none';
-                e.target.textContent = '✓';
-            }
-        });
-    });
-}
-
-function renderIAModTab(container) {
-    if (!container) return;
-    container.innerHTML = `
-        <div class="ia-mod-messages" id="iaModMessages">
-            <div class="ia-mod-hint">💡 Dis-moi ce que tu veux modifier dans ce planning proposé !</div>
-        </div>
-        <div class="ia-mod-input-area">
-            <textarea id="iaModInput" placeholder="Ex: Remplace le lundi midi par quelque chose de végé..." rows="2" style="font-size:16px;"></textarea>
-            <button id="iaModSendBtn">➤</button>
-        </div>`;
-
-    document.getElementById('iaModSendBtn').addEventListener('click', sendModifyProposalIA);
-    document.getElementById('iaModInput').addEventListener('keydown', e => {
-        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendModifyProposalIA(); }
-    });
-}
-
-async function sendModifyProposalIA() {
-    const input = document.getElementById('iaModInput');
-    if (!input || !proposedPlanning) return;
-    const text = input.value.trim();
-    if (!text) return;
-
-    input.value = '';
-    const msgs = document.getElementById('iaModMessages');
-    if (msgs) {
-        msgs.innerHTML += `<div class="ia-mod-msg user">${text}</div>
-            <div class="ia-mod-msg assistant" id="iaModTyping">⋯</div>`;
-        msgs.scrollTop = msgs.scrollHeight;
-    }
-
-    try {
-        const res = await fetch(`${window.BACKEND_API_URL}/api/generate-planning`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: text,
-                proposedPlanning,
-                currentWeek, currentYear,
-                servings: selectedServings,
-                frequency: selectedFrequency,
-                userIntent: 'modify_proposal',
-                history: chatHistory.slice(-6)
-            })
-        });
-
-        const data = await res.json();
-        const typing = document.getElementById('iaModTyping');
-
-        if (data.planning) {
-            proposedPlanning = data.planning;
-            // Rerender onglet manuel si actif
-            const active = document.querySelector('.mod-tab-btn.active')?.dataset.tab;
-            if (active === 'manual') renderManualModTab(document.getElementById('modProposalContent'));
-            const reply = data.message || '✅ Planning mis à jour !';
-            if (typing) typing.textContent = reply;
-        } else {
-            if (typing) typing.textContent = data.message || 'Impossible de modifier 😕';
-        }
-        if (msgs) msgs.scrollTop = msgs.scrollHeight;
-
-    } catch(err) {
-        const typing = document.getElementById('iaModTyping');
-        if (typing) typing.textContent = 'Erreur de connexion 😕';
-    }
-}
-
-async function acceptProposedPlanning() {
-    if (!proposedPlanning) return;
-
-    const btn = document.getElementById('chatAcceptBtn');
-    if (btn) { btn.disabled = true; btn.textContent = '⏳ En cours...'; }
-
-    const days = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
-    const dayLabels = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
-    const { monday } = getWeekDates(currentWeek, currentYear);
-
-    const entries = [];
-    days.forEach((day, i) => {
-        const entry = proposedPlanning[day];
-        if (!entry) return;
-        const date = new Date(monday);
-        date.setDate(date.getDate() + i);
-        const dateStr = date.toISOString().split('T')[0];
-
-        if (entry.dejeuner?.id) {
-            entries.push({ day: dayLabels[i], date: dateStr, meal: 'Déjeuner', recipeId: entry.dejeuner.id, week: currentWeek, year: currentYear, servings: 2 });
-        }
-        if (entry.diner?.id) {
-            entries.push({ day: dayLabels[i], date: dateStr, meal: 'Dîner', recipeId: entry.diner.id, week: currentWeek, year: currentYear, servings: 2 });
-        }
-    });
-
-    try {
-        const res = await fetch(`${window.BACKEND_API_URL}/api/planning/bulk`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ entries })
-        });
-        const data = await res.json();
-
-        if (data.success) {
-            if (btn) { btn.textContent = '✅ Ajouté !'; }
-            appendChatMessage('assistant', `🎉 ${data.created} repas ajoutés à ta semaine ! Rechargement...`);
-            proposedPlanning = null;
-            setChatReviewMode(false);
-            await fullRefresh();
-        } else {
-            if (btn) { btn.disabled = false; btn.textContent = '✅ Accepter le planning'; }
-            appendChatMessage('assistant', 'Erreur lors de l\'ajout au planning 😕');
-        }
-    } catch(e) {
-        if (btn) { btn.disabled = false; btn.textContent = '✅ Accepter le planning'; }
-        appendChatMessage('assistant', 'Erreur de connexion 😕');
-    }
-}
-
-// --- Core chat functions ---
-function openChatPopup() {
-    document.getElementById('chatPopup').classList.add('active');
-    initForcedRecipesSelector();
-    initChatWeekHistory();
-}
-
-function closeChatPopup() {
-    document.getElementById('chatPopup').classList.remove('active');
-}
-
-function resetChat() {
-    chatHistory = [];
-    selectedStyles = [];
-    forcedRecipes = [];
-    proposedPlanning = null;
-    proposedChanges = null;
-    pendingClarificationMessage = '';
-    selectedServings = 2;
-    selectedFrequency = 1;
-    forcedRecipesInited = false;
-    setChatReviewMode(false);
-    renderForcedChips();
-
-    const messages = document.getElementById('chatMessages');
-    messages.innerHTML = `
-        <div class="chat-message assistant">
-            <div class="chat-bubble">${buildWelcomeHTML()}</div>
-        </div>`;
-
-    updateGenerateBtn();
-    initChatWeekHistory();
-}
-
-function appendChatMessage(role, html) {
-    const messages = document.getElementById('chatMessages');
-    const div = document.createElement('div');
-    div.className = `chat-message ${role}`;
-    div.innerHTML = `<div class="chat-bubble">${html}</div>`;
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
-    return div;
-}
-
-function showChatTyping() {
-    const messages = document.getElementById('chatMessages');
-    const div = document.createElement('div');
-    div.className = 'chat-message assistant';
-    div.id = 'chatTypingIndicator';
-    div.innerHTML = `<div class="chat-typing"><span></span><span></span><span></span></div>`;
-    messages.appendChild(div);
-    messages.scrollTop = messages.scrollHeight;
-}
-
-function removeChatTyping() {
-    const el = document.getElementById('chatTypingIndicator');
-    if (el) el.remove();
-}
-
-async function sendChatMessage() {
-    if (chatIsLoading) return;
-    const input = document.getElementById('chatInput');
-    const text = input.value.trim();
-    if (!text) return;
-
-    input.value = '';
-    input.style.height = 'auto';
-    chatIsLoading = true;
-    document.getElementById('chatSendBtn').disabled = true;
-
-    appendChatMessage('user', text);
-    chatHistory.push({ role: 'user', content: text });
-    showChatTyping();
-
-    // Tout passe par /api/generate-planning — le Keyword Router n8n décide :
-    // create / modify / chat / unclear
-    try {
-        const res = await fetch(`${window.BACKEND_API_URL}/api/generate-planning`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                prompt: text,
-                styles: selectedStyles,
-                forcedRecipes,
-                currentWeek,
-                currentYear,
-                servings: selectedServings,
-                frequency: selectedFrequency,
-                history: chatHistory.slice(-10)
-            })
-        });
-
-        const data = await res.json();
-        removeChatTyping();
-
-        // Cas 1 : clarification requise (unclear)
-        if (data.needsClarification) {
-            pendingClarificationMessage = text;
-            renderClarificationMessage(data.message);
-            chatHistory.push({ role: 'assistant', content: data.message });
-            // Log automatique du cas unclear pour apprentissage
-            reinforceIntent(text, 'unclear');
-
-        // Cas 2 : modification du planning
-        } else if (data.mode === 'modify' && data.changes) {
-            proposedChanges = data.changes;
-            const messageHtml = (data.message || '').replace(/\n/g, '<br>');
-            renderModifyProposal(data.changes, messageHtml);
-            chatHistory.push({ role: 'assistant', content: data.message || 'Voici les modifications.' });
-
-        // Cas 3 : planning complet proposé (create)
-        } else if (data.planning) {
-            proposedPlanning = data.planning;
-            const messageHtml = (data.message || '').replace(/\n/g, '<br>');
-            renderPlanningProposal(data.planning, messageHtml);
-            chatHistory.push({ role: 'assistant', content: data.message || 'Voici le planning proposé.' });
-            updateGenerateBtn();
-
-        // Cas 4 : réponse chat simple (intent = chat)
-        } else {
-            const replyText = data.message || data.error || 'Je n\'ai pas pu répondre, réessaie.';
-            appendChatMessage('assistant', replyText.replace(/\n/g, '<br>'));
-            chatHistory.push({ role: 'assistant', content: replyText });
-        }
-
-    } catch (err) {
-        removeChatTyping();
-        console.error('❌ Chat error:', err);
-        appendChatMessage('assistant', 'Erreur de connexion 😕 Réessaie dans un instant.');
-    }
-
-    chatIsLoading = false;
-    document.getElementById('chatSendBtn').disabled = false;
-}
-
-// --- Event delegation sur chatMessages (boutons dynamiques) ---
-document.getElementById('chatMessages').addEventListener('click', e => {
-    // Style btn (pas l'icône 👁)
-    const styleBtn = e.target.closest('.chat-style-btn');
-    if (styleBtn && !e.target.classList.contains('style-eye')) {
-        toggleStyleSelection(styleBtn.dataset.style);
-        return;
-    }
-    // Icône preview 👁
-    const eyeIcon = e.target.closest('.style-eye');
-    if (eyeIcon) {
-        showStylePreview(eyeIcon.dataset.style);
-        return;
-    }
-    // Bouton semaine passée
-    const weekBtn = e.target.closest('.chat-week-btn');
-    if (weekBtn) {
-        showWeekPopup(+weekBtn.dataset.week, +weekBtn.dataset.year);
-        return;
-    }
-    // Boutons portions / frequency
-    const paramBtn = e.target.closest('.chat-param-btn');
-    if (paramBtn) {
-        const param = paramBtn.dataset.param;
-        const value = +paramBtn.dataset.value;
-        if (param === 'servings') selectedServings = value;
-        else if (param === 'frequency') selectedFrequency = value;
-        document.querySelectorAll(`.chat-param-btn[data-param="${param}"]`).forEach(btn => {
-            btn.classList.toggle('active', +btn.dataset.value === value);
-        });
-        return;
-    }
-    // Bouton générer — force create pour court-circuiter le Keyword Router
-    if (e.target.id === 'chatGenerateBtn') {
-        generatePlanning('create');
-        return;
-    }
-    // Bouton accepter planning (create)
-    if (e.target.id === 'chatAcceptBtn') {
-        acceptProposedPlanning();
-        return;
-    }
-    // Bouton modifier planning proposé → ouvre popup
-    if (e.target.id === 'chatModifyProposalBtn') {
-        openModProposalPopup();
-        return;
-    }
-    // Bouton annuler planning proposé
-    if (e.target.id === 'chatCancelProposalBtn') {
-        cancelProposal();
-        return;
-    }
-    // Bouton appliquer changements (modify existant Airtable)
-    if (e.target.id === 'chatAcceptModifyBtn') {
-        applyPlanningChanges();
-        return;
-    }
-    // Boutons clarification intent
-    const clarifyBtn = e.target.closest('.chat-clarify-btn');
-    if (clarifyBtn) {
-        const intent = clarifyBtn.dataset.intent;
-        // Désactiver les 2 boutons
-        clarifyBtn.closest('.chat-clarify-btns')?.querySelectorAll('.chat-clarify-btn').forEach(b => b.disabled = true);
-        // Fire-and-forget reinforcement
-        reinforceIntent(pendingClarificationMessage, intent);
-        // Relancer avec l'intent confirmé
-        generatePlanning(intent);
-        return;
-    }
-});
-
-// Chat event listeners
-document.getElementById('chatFab').addEventListener('click', openChatPopup);
-document.getElementById('closeChatPopup').addEventListener('click', closeChatPopup);
-document.getElementById('chatNewBtn').addEventListener('click', resetChat);
-
-// Popup modifier planning proposé
-document.getElementById('closeModProposalBtn').addEventListener('click', closeModProposalPopup);
-document.getElementById('applyModProposalBtn').addEventListener('click', closeModProposalPopup);
-document.querySelectorAll('.mod-tab-btn').forEach(btn =>
-    btn.addEventListener('click', () => switchModProposalTab(btn.dataset.tab))
-);
-// Fermer en cliquant l'overlay
-document.getElementById('modProposalOverlay').addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeModProposalPopup();
-});
-document.getElementById('chatSendBtn').addEventListener('click', sendChatMessage);
-
-document.getElementById('chatPinBtn').addEventListener('click', () => {
-    const bar = document.getElementById('chatContextBar');
-    const isVisible = bar.style.display !== 'none';
-    bar.style.display = isVisible ? 'none' : 'block';
-    document.getElementById('chatPinBtn').classList.toggle('active', !isVisible);
-    if (!isVisible) {
-        initForcedRecipesSelector();
-        document.getElementById('chatRecipeSearch')?.focus();
-    }
-});
-
-document.getElementById('chatInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendChatMessage();
-    }
-});
-
-document.getElementById('chatInput').addEventListener('input', function() {
-    this.style.height = 'auto';
-    this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-});
-
 // ===== DÉMARRAGE =====
-init();
+// init() est appelé par auth.js après login réussi, ou ici si déjà connecté
+checkAuth().then(authenticated => {
+    if (authenticated) init();
+});
