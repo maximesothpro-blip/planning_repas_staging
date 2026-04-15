@@ -3800,18 +3800,20 @@ async function showWeekPopup(week, year) {
             <div class="week-popup-rows" id="weekPopupRows">${rows}</div>`;
         updateChatOverlay(html);
 
-        // Event delegation sur les boutons "+"
-        document.getElementById('weekPopupRows')?.addEventListener('click', e => {
-            const btn = e.target.closest('.week-add-recipe-btn');
-            if (!btn) return;
-            const id = btn.dataset.id;
-            const name = decodeURIComponent(btn.dataset.name);
-            if (!id || id === 'undefined') return;
-            addForcedRecipe(id, name);
-            btn.textContent = '✓';
-            btn.disabled = true;
-            btn.style.background = '#22c55e';
-        });
+        // Event delegation sur chatOverlayEl (plus fiable sur mobile)
+        if (chatOverlayEl) {
+            chatOverlayEl.addEventListener('click', e => {
+                const btn = e.target.closest('.week-add-recipe-btn');
+                if (!btn) return;
+                const id = btn.dataset.id;
+                const name = decodeURIComponent(btn.dataset.name);
+                if (!id || id === 'undefined') return;
+                addForcedRecipe(id, name);
+                btn.textContent = '✓';
+                btn.disabled = true;
+                btn.style.background = '#22c55e';
+            });
+        }
     } catch(e) {
         updateChatOverlay(`<h3>Semaine ${week}</h3><p>Erreur de chargement.</p>`);
     }
@@ -3882,25 +3884,33 @@ function updateGenerateBtn() {
 }
 
 // --- Recipe picker overlay ---
+function buildRecipePickerItems(filter = '') {
+    const q = filter.toLowerCase();
+    return recipes
+        .filter(r => !q || r.name.toLowerCase().includes(q))
+        .map(r => {
+            const isSelected = !!forcedRecipes.find(f => f.id === r.id);
+            return `<div class="recipe-picker-item${isSelected ? ' selected' : ''}" data-id="${r.id}" data-name="${encodeURIComponent(r.name)}">
+                <span class="recipe-picker-name">${r.name}</span>
+                <span class="recipe-picker-check">${isSelected ? '✓' : '+'}</span>
+            </div>`;
+        }).join('');
+}
+
 function showRecipePickerOverlay() {
-    const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
-
-    const items = recipes.map(r => {
-        const isSelected = !!forcedRecipes.find(f => f.id === r.id);
-        return `<div class="recipe-picker-item${isSelected ? ' selected' : ''}" data-id="${r.id}" data-name="${encodeURIComponent(r.name)}">
-            <span class="recipe-picker-name">${r.name}</span>
-            <span class="recipe-picker-check">${isSelected ? '✓' : '+'}</span>
-        </div>`;
-    }).join('');
-
     showChatOverlay(`
         <h3>Recettes à inclure</h3>
-        <p class="recipe-picker-hint">Sélectionne les recettes que tu veux dans ton planning.</p>
-        <div class="recipe-picker-list" id="recipePickerList">${items}</div>
+        <input type="text" id="recipePickerSearch" class="recipe-picker-search"
+            placeholder="Chercher une recette..." autocomplete="off" autocorrect="off"
+            spellcheck="false" inputmode="search">
+        <div class="recipe-picker-list">${buildRecipePickerItems()}</div>
     `);
 
-    // Event delegation sur la liste
-    document.getElementById('recipePickerList')?.addEventListener('click', e => {
+    // Event delegation directement sur chatOverlayEl (plus fiable que getElementById)
+    if (!chatOverlayEl) return;
+
+    // Clic sur un item
+    chatOverlayEl.addEventListener('click', e => {
         const item = e.target.closest('.recipe-picker-item');
         if (!item) return;
         const id = item.dataset.id;
@@ -3914,6 +3924,12 @@ function showRecipePickerOverlay() {
             item.classList.add('selected');
             item.querySelector('.recipe-picker-check').textContent = '✓';
         }
+    });
+
+    // Recherche — PAS d'autofocus, l'utilisateur tape quand il clique
+    chatOverlayEl.querySelector('#recipePickerSearch')?.addEventListener('input', function() {
+        const list = chatOverlayEl.querySelector('.recipe-picker-list');
+        if (list) list.innerHTML = buildRecipePickerItems(this.value);
     });
 }
 
@@ -4159,11 +4175,11 @@ function renderPlanningProposal(planning, messageHtml) {
 
     const bubble = `
         ${messageHtml ? `<div class="planning-proposal-msg">${messageHtml}</div>` : ''}
-        <div class="proposal-days-list" id="proposalDaysList">${rows}</div>
+        <div class="proposal-days-list">${rows}</div>
         <div class="planning-proposal-actions">
-            <button class="proposal-act-btn accept" id="chatAcceptBtn">✅ Accepter</button>
-            <button class="proposal-act-btn modify" id="chatModifyProposalBtn">✏️ Modifier</button>
-            <button class="proposal-act-btn cancel" id="chatCancelProposalBtn">✕ Annuler</button>
+            <button class="proposal-act-btn accept" data-action="accept-proposal">✅ Accepter</button>
+            <button class="proposal-act-btn modify" data-action="modify-proposal">✏️ Modifier</button>
+            <button class="proposal-act-btn cancel" data-action="cancel-proposal">✕ Annuler</button>
         </div>`;
 
     appendChatMessage('assistant', bubble);
@@ -4184,9 +4200,15 @@ function cancelProposal() {
     appendChatMessage('assistant', 'Planning annulé. Dis-moi ce que tu veux ou regénère quand tu veux !');
 }
 
+// Retourne le dernier proposal-days-list dans le chat (supporte plusieurs proposals)
+function getLatestProposalList() {
+    const all = document.querySelectorAll('.proposal-days-list');
+    return all.length ? all[all.length - 1] : null;
+}
+
 // Met à jour le rendu de la liste des jours dans la bulle existante
 function refreshProposalDaysDisplay() {
-    const list = document.getElementById('proposalDaysList');
+    const list = getLatestProposalList();
     if (!list || !proposedPlanning) return;
     const days = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
     const dayLabels = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
@@ -4221,10 +4243,10 @@ function openModProposalPopup() {
 function closeModProposalPopup() {
     document.getElementById('modProposalOverlay').style.display = 'none';
     refreshProposalDaysDisplay();
-    // Scroll vers le planning mis à jour dans le panel de chat
+    // Scroll vers le dernier planning mis à jour dans le panel de chat
     setTimeout(() => {
         const messages = document.getElementById('chatMessages');
-        const list = document.getElementById('proposalDaysList');
+        const list = getLatestProposalList();
         if (messages && list) {
             messages.scrollTop = list.offsetTop - 20;
         }
@@ -4372,7 +4394,9 @@ async function sendModifyProposalIA() {
 async function acceptProposedPlanning() {
     if (!proposedPlanning) return;
 
-    const btn = document.getElementById('chatAcceptBtn');
+    // Prend le dernier bouton Accepter (en cas de plusieurs proposals)
+    const allBtns = document.querySelectorAll('[data-action="accept-proposal"]');
+    const btn = allBtns.length ? allBtns[allBtns.length - 1] : null;
     if (btn) { btn.disabled = true; btn.textContent = '⏳ En cours...'; }
 
     const days = ['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
@@ -4405,10 +4429,11 @@ async function acceptProposedPlanning() {
 
         if (data.success) {
             if (btn) { btn.textContent = '✅ Ajouté !'; }
-            appendChatMessage('assistant', `🎉 ${data.created} repas ajoutés à ta semaine ! Rechargement...`);
+            appendChatMessage('assistant', `🎉 ${data.created} repas ajoutés à ta semaine !`);
             proposedPlanning = null;
             setChatReviewMode(false);
             await fullRefresh();
+            setTimeout(() => closeChatPopup(), 1200);
         } else {
             if (btn) { btn.disabled = false; btn.textContent = '✅ Accepter le planning'; }
             appendChatMessage('assistant', 'Erreur lors de l\'ajout au planning 😕');
@@ -4596,21 +4621,11 @@ document.getElementById('chatMessages').addEventListener('click', e => {
         generatePlanning('create');
         return;
     }
-    // Bouton accepter planning (create)
-    if (e.target.id === 'chatAcceptBtn') {
-        acceptProposedPlanning();
-        return;
-    }
-    // Bouton modifier planning proposé → ouvre popup
-    if (e.target.id === 'chatModifyProposalBtn') {
-        openModProposalPopup();
-        return;
-    }
-    // Bouton annuler planning proposé
-    if (e.target.id === 'chatCancelProposalBtn') {
-        cancelProposal();
-        return;
-    }
+    // Boutons du planning proposé (data-action, supporte plusieurs proposals)
+    const action = e.target.dataset?.action;
+    if (action === 'accept-proposal') { acceptProposedPlanning(); return; }
+    if (action === 'modify-proposal') { openModProposalPopup(); return; }
+    if (action === 'cancel-proposal') { cancelProposal(); return; }
     // Bouton appliquer changements (modify existant Airtable)
     if (e.target.id === 'chatAcceptModifyBtn') {
         applyPlanningChanges();

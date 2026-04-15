@@ -4085,3 +4085,29 @@ body {
 }
 .week-add-recipe-btn:hover { background: #6d28d9; }
 .week-add-recipe-btn:disabled { background: #22c55e; cursor: default; }
+
+/* ===== SCROLL BLEED FIX (overlay mobile) ===== */
+.chat-overlay {
+    overscroll-behavior: contain;
+    touch-action: pan-y;
+}
+.chat-overlay-content {
+    overscroll-behavior: contain;
+}
+
+/* ===== RECIPE PICKER SEARCH ===== */
+.recipe-picker-search {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    border: 1.5px solid #ddd6fe;
+    border-radius: 8px;
+    font-size: 15px;
+    margin-bottom: 10px;
+    outline: none;
+    color: #1e1b4b;
+    background: #faf5ff;
+}
+.recipe-picker-search:focus {
+    border-color: #7c3aed;
+}
