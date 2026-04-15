@@ -262,6 +262,11 @@ function showDaySummaryPopup(day) {
 
 // ===== AFFICHER LE PLANNING =====
 function displayPlanning() {
+    // Vider tous les slots avant de re-render (évite les doublons après refresh)
+    document.querySelectorAll('.meal-slot .meal-content').forEach(mc => {
+        mc.innerHTML = '<div class="empty-slot">Glissez une recette ici</div>';
+    });
+
     planning.forEach(item => {
         // Trouver le slot correspondant dans le calendrier
         const slot = document.querySelector(`[data-day="${item.day}"][data-meal="${item.meal}"]`);
@@ -3321,6 +3326,21 @@ createRecipePopup.addEventListener('click', (e) => {
 });
 
 // Handle form submission
+// Toggle tags sélecteur création recette
+document.getElementById('recipeTagsSelector').addEventListener('click', e => {
+    const btn = e.target.closest('.recipe-tag-btn');
+    if (!btn) return;
+    btn.classList.toggle('selected');
+});
+
+function getSelectedTags() {
+    return [...document.querySelectorAll('.recipe-tag-btn.selected')].map(b => b.dataset.tag);
+}
+
+function resetTagsSelector() {
+    document.querySelectorAll('.recipe-tag-btn.selected').forEach(b => b.classList.remove('selected'));
+}
+
 createRecipeForm.addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -3329,7 +3349,8 @@ createRecipeForm.addEventListener('submit', async (e) => {
         title: document.getElementById('recipeTitle').value,
         description: document.getElementById('recipeDescription').value,
         ingredients: document.getElementById('recipeIngredients').value,
-        recipe: document.getElementById('recipeSteps').value
+        recipe: document.getElementById('recipeSteps').value,
+        tags: getSelectedTags()
     };
 
     console.log('📝 Sending recipe to n8n:', formData);
@@ -3358,8 +3379,8 @@ createRecipeForm.addEventListener('submit', async (e) => {
         console.log('✅ n8n response keys:', Object.keys(result));
         console.log('✅ n8n response stringified:', JSON.stringify(result, null, 2));
 
-        // Store recipe data for Accept button
-        currentRecipeData = result;
+        // Store recipe data for Accept button (on conserve les tags choisis par l'utilisateur)
+        currentRecipeData = { ...result, tags: formData.tags };
 
         // Display preview with n8n response
         displayRecipePreview(result);
@@ -3538,6 +3559,7 @@ recipeAcceptBtn.addEventListener('click', async () => {
 
         // Reset and close
         createRecipeForm.reset();
+        resetTagsSelector();
         createRecipeForm.style.display = 'block';
         recipePreview.style.display = 'none';
         recipeLoading.style.display = 'none';

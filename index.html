@@ -159,6 +159,20 @@
                     <textarea id="recipeSteps" name="recipe" rows="8" placeholder="Étapes de préparation"></textarea>
                 </div>
 
+                <div class="form-group">
+                    <label>Tags</label>
+                    <div class="recipe-tags-selector" id="recipeTagsSelector">
+                        <button type="button" class="recipe-tag-btn" data-tag="Healthy">🥗 Healthy</button>
+                        <button type="button" class="recipe-tag-btn" data-tag="Prot">💪 Prot</button>
+                        <button type="button" class="recipe-tag-btn" data-tag="Pas cher">💸 Pas cher</button>
+                        <button type="button" class="recipe-tag-btn" data-tag="Fancy">✨ Fancy</button>
+                        <button type="button" class="recipe-tag-btn" data-tag="Challenge">🎯 Challenge</button>
+                        <button type="button" class="recipe-tag-btn" data-tag="Confort">🏠 Confort</button>
+                        <button type="button" class="recipe-tag-btn" data-tag="Réconfort">🤗 Réconfort</button>
+                        <button type="button" class="recipe-tag-btn" data-tag="Favori">⭐ Favori</button>
+                    </div>
+                </div>
+
                 <button type="submit" class="create-recipe-submit-btn">Créer</button>
             </form>
 
@@ -346,7 +360,7 @@
     </div>
 
     <!-- Version -->
-    <div class="version-info">Staging v2.17 - Fix ROW_DOES_NOT_EXIST: validation ID recette + fallback par nom - 15/04/2026</div>
+    <div class="version-info">Staging v2.18 - Fix refresh planning, tags création recette (Healthy/Prot/Favori...) - 15/04/2026</div>
 
     <script src="config.js"></script>
     <script src="planning.js"></script>

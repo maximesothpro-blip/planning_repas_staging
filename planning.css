@@ -1872,6 +1872,39 @@ body {
     box-shadow: 0 4px 12px rgba(167, 139, 250, 0.4);
 }
 
+/* ===== TAGS SÉLECTEUR CRÉATION RECETTE ===== */
+.recipe-tags-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.recipe-tag-btn {
+    background: #f3f0ff;
+    border: 2px solid #ddd6fe;
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6d28d9;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.recipe-tag-btn:hover {
+    background: #ede9fe;
+    border-color: #a78bfa;
+}
+
+.recipe-tag-btn.selected {
+    background: linear-gradient(135deg, #c4b5fd 0%, #a78bfa 100%);
+    border-color: #7c3aed;
+    color: white;
+    box-shadow: 0 2px 8px rgba(124, 58, 237, 0.3);
+}
+
 /* ===== RECIPE PREVIEW (v3.10) ===== */
 .recipe-preview {
     margin-top: 24px;
