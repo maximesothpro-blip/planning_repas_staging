@@ -3978,3 +3978,110 @@ body {
         max-height: 90dvh;
     }
 }
+
+/* ===== RECIPE PICKER OVERLAY ===== */
+.recipe-picker-hint {
+    font-size: 12px;
+    color: #888;
+    margin: 0 0 10px;
+}
+.recipe-picker-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    max-height: 55vh;
+    overflow-y: auto;
+}
+.recipe-picker-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #f5f0ff;
+    cursor: pointer;
+    transition: background 0.15s;
+    font-size: 14px;
+}
+.recipe-picker-item:hover { background: #ede8ff; }
+.recipe-picker-item.selected { background: #ddd6fe; }
+.recipe-picker-check {
+    font-size: 16px;
+    font-weight: 700;
+    color: #7c3aed;
+    min-width: 20px;
+    text-align: center;
+}
+
+/* ===== CHIPS AVEC SÉLECTEUR JOUR ===== */
+.chat-forced-wrap {
+    padding: 4px 0 0;
+}
+.chat-add-recipes-btn {
+    background: #ede8ff;
+    border: 1.5px solid #c4b5fd;
+    border-radius: 8px;
+    color: #6d28d9;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 6px;
+}
+.chat-add-recipes-btn:hover { background: #ddd6fe; }
+.chat-forced-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #ddd6fe;
+    border-radius: 20px;
+    padding: 3px 4px 3px 10px;
+    font-size: 12px;
+    color: #4c1d95;
+    margin: 2px;
+}
+.chip-name { font-weight: 600; }
+.chip-day-select {
+    font-size: 11px;
+    border: none;
+    background: #c4b5fd;
+    color: #3b0764;
+    border-radius: 10px;
+    padding: 2px 4px;
+    cursor: pointer;
+    max-width: 80px;
+}
+.chip-remove {
+    background: none;
+    border: none;
+    color: #7c3aed;
+    font-size: 14px;
+    cursor: pointer;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+/* ===== WEEK POPUP - MEALS SÉLECTIONNABLES ===== */
+.week-meal-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 4px;
+}
+.week-add-recipe-btn {
+    background: #7c3aed;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.week-add-recipe-btn:hover { background: #6d28d9; }
+.week-add-recipe-btn:disabled { background: #22c55e; cursor: default; }

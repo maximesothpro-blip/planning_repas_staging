@@ -844,19 +844,33 @@ app.post('/api/planning/bulk', async (req, res) => {
 // POST : Générer un planning via n8n IA
 app.post('/api/generate-planning', async (req, res) => {
   try {
-    const { styles, forcedRecipes, prompt, currentWeek, currentYear, history } = req.body;
+    const { styles, forcedRecipes, prompt, currentWeek, currentYear, history,
+            userIntent, servings, frequency, proposedPlanning } = req.body;
 
-    console.log(`🤖 Generating planning: styles=${JSON.stringify(styles)}, week=${currentWeek}/${currentYear}`);
+    console.log(`🤖 Generating planning: intent=${userIntent}, styles=${JSON.stringify(styles)}, week=${currentWeek}/${currentYear}`);
 
-    const response = await axios.post(N8N_GENERATE_PLANNING_WEBHOOK, {
+    const body = {
       styles: styles || [],
       forcedRecipes: forcedRecipes || [],
       prompt: prompt || '',
       currentWeek,
       currentYear,
       history: history || [],
+      userIntent: userIntent || null,
+      servings: servings || 2,
+      frequency: frequency || 1,
+      proposedPlanning: proposedPlanning || null,
       timestamp: new Date().toISOString()
-    }, { timeout: 90000 });
+    };
+
+    // Routing rapide côté backend pour aider le Keyword Router n8n
+    if (userIntent === 'modify_proposal') {
+      console.log('↪ Intent modify_proposal — forwarding directly');
+    } else if (userIntent === 'create') {
+      console.log('↪ Intent create — forwarding directly');
+    }
+
+    const response = await axios.post(N8N_GENERATE_PLANNING_WEBHOOK, body, { timeout: 90000 });
 
     const data = response.data;
     res.json({

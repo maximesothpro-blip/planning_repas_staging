@@ -3723,7 +3723,11 @@ function buildWelcomeHTML() {
             <div class="chat-week-label">Semaines passées :</div>
             <div class="chat-week-btns" id="chatWeekBtns"><span class="chat-week-loading">chargement...</span></div>
         </div>
-        <div class="chat-generate-wrap" id="chatGenerateWrap" style="display:none;">
+        <div class="chat-forced-wrap">
+            <button class="chat-add-recipes-btn" id="chatAddRecipesBtn">📌 Recettes à inclure</button>
+            <div class="chat-forced-chips" id="chatForcedChips"></div>
+        </div>
+        <div class="chat-generate-wrap" id="chatGenerateWrap">
             <button class="chat-generate-btn" id="chatGenerateBtn">✨ Générer le planning</button>
         </div>`;
 }
@@ -3763,27 +3767,51 @@ async function showWeekPopup(week, year) {
 
         const days = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
         const byDay = {};
+        const byDayId = {};
         planningEntries.forEach(entry => {
-            if (!byDay[entry.day]) byDay[entry.day] = {};
+            if (!byDay[entry.day]) { byDay[entry.day] = {}; byDayId[entry.day] = {}; }
             const recipeId = Array.isArray(entry.recipe) ? entry.recipe[0] : entry.recipe;
             const recipeName = recipes.find(r => r.id === recipeId)?.name || '?';
             byDay[entry.day][entry.meal] = recipeName;
+            byDayId[entry.day][entry.meal] = recipeId;
         });
 
         const rows = days.map(day => {
             const dej = byDay[day]?.['Déjeuner'] || '';
             const din = byDay[day]?.['Dîner'] || '';
+            const dejId = byDayId[day]?.['Déjeuner'] || '';
+            const dinId = byDayId[day]?.['Dîner'] || '';
             if (!dej && !din) return '';
             return `<div class="week-popup-row">
                 <div class="week-popup-day">${day}</div>
                 <div class="week-popup-meals">
-                    ${dej ? `<span>🍽️ ${dej}</span>` : ''}
-                    ${din ? `<span>🌙 ${din}</span>` : ''}
+                    ${dej ? `<span class="week-meal-item">🍽️ ${dej}
+                        <button class="week-add-recipe-btn" data-id="${dejId}" data-name="${encodeURIComponent(dej)}" title="Ajouter à cette semaine">+</button>
+                    </span>` : ''}
+                    ${din ? `<span class="week-meal-item">🌙 ${din}
+                        <button class="week-add-recipe-btn" data-id="${dinId}" data-name="${encodeURIComponent(din)}" title="Ajouter à cette semaine">+</button>
+                    </span>` : ''}
                 </div>
             </div>`;
         }).filter(Boolean).join('');
 
-        updateChatOverlay(`<h3>Semaine ${week}</h3><div class="week-popup-rows">${rows}</div>`);
+        const html = `<h3>Semaine ${week}</h3>
+            <p class="recipe-picker-hint">Clique sur <strong>+</strong> pour ajouter un repas à ta sélection.</p>
+            <div class="week-popup-rows" id="weekPopupRows">${rows}</div>`;
+        updateChatOverlay(html);
+
+        // Event delegation sur les boutons "+"
+        document.getElementById('weekPopupRows')?.addEventListener('click', e => {
+            const btn = e.target.closest('.week-add-recipe-btn');
+            if (!btn) return;
+            const id = btn.dataset.id;
+            const name = decodeURIComponent(btn.dataset.name);
+            if (!id || id === 'undefined') return;
+            addForcedRecipe(id, name);
+            btn.textContent = '✓';
+            btn.disabled = true;
+            btn.style.background = '#22c55e';
+        });
     } catch(e) {
         updateChatOverlay(`<h3>Semaine ${week}</h3><p>Erreur de chargement.</p>`);
     }
@@ -3849,52 +3877,48 @@ function toggleStyleSelection(styleKey) {
 }
 
 function updateGenerateBtn() {
-    const wrap = document.getElementById('chatGenerateWrap');
-    if (!wrap) return;
-    const visible = selectedStyles.length > 0 || forcedRecipes.length > 0;
-    wrap.style.display = visible ? 'block' : 'none';
     const btn = document.getElementById('chatGenerateBtn');
     if (btn) btn.textContent = proposedPlanning ? '🔄 Regénérer le planning' : '✨ Générer le planning';
 }
 
-// --- Forced recipes dropdown ---
-let forcedRecipesInited = false;
-function initForcedRecipesSelector() {
-    if (forcedRecipesInited) return;
-    forcedRecipesInited = true;
+// --- Recipe picker overlay ---
+function showRecipePickerOverlay() {
+    const DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
-    const input = document.getElementById('chatRecipeSearch');
-    const dropdown = document.getElementById('chatRecipeDropdown');
-    if (!input || !dropdown) return;
+    const items = recipes.map(r => {
+        const isSelected = !!forcedRecipes.find(f => f.id === r.id);
+        return `<div class="recipe-picker-item${isSelected ? ' selected' : ''}" data-id="${r.id}" data-name="${encodeURIComponent(r.name)}">
+            <span class="recipe-picker-name">${r.name}</span>
+            <span class="recipe-picker-check">${isSelected ? '✓' : '+'}</span>
+        </div>`;
+    }).join('');
 
-    input.addEventListener('input', () => {
-        const q = input.value.trim().toLowerCase();
-        if (!q) { dropdown.style.display = 'none'; return; }
+    showChatOverlay(`
+        <h3>Recettes à inclure</h3>
+        <p class="recipe-picker-hint">Sélectionne les recettes que tu veux dans ton planning.</p>
+        <div class="recipe-picker-list" id="recipePickerList">${items}</div>
+    `);
 
-        const filtered = recipes.filter(r =>
-            r.name.toLowerCase().includes(q) && !forcedRecipes.find(f => f.id === r.id)
-        ).slice(0, 8);
-
-        if (!filtered.length) { dropdown.style.display = 'none'; return; }
-
-        dropdown.innerHTML = filtered.map(r =>
-            `<div class="chat-recipe-option" data-id="${r.id}" data-name="${encodeURIComponent(r.name)}">${r.name}</div>`
-        ).join('');
-        dropdown.style.display = 'block';
-    });
-
-    dropdown.addEventListener('click', e => {
-        const opt = e.target.closest('.chat-recipe-option');
-        if (!opt) return;
-        addForcedRecipe(opt.dataset.id, decodeURIComponent(opt.dataset.name));
-        input.value = '';
-        dropdown.style.display = 'none';
-    });
-
-    document.addEventListener('click', e => {
-        if (!e.target.closest('#chatContextBar')) dropdown.style.display = 'none';
+    // Event delegation sur la liste
+    document.getElementById('recipePickerList')?.addEventListener('click', e => {
+        const item = e.target.closest('.recipe-picker-item');
+        if (!item) return;
+        const id = item.dataset.id;
+        const name = decodeURIComponent(item.dataset.name);
+        if (forcedRecipes.find(f => f.id === id)) {
+            removeForcedRecipe(id);
+            item.classList.remove('selected');
+            item.querySelector('.recipe-picker-check').textContent = '+';
+        } else {
+            addForcedRecipe(id, name);
+            item.classList.add('selected');
+            item.querySelector('.recipe-picker-check').textContent = '✓';
+        }
     });
 }
+
+// Compat — garde initForcedRecipesSelector vide pour éviter les erreurs d'appels existants
+function initForcedRecipesSelector() {}
 
 function addForcedRecipe(id, name) {
     if (forcedRecipes.find(r => r.id === id)) return;
@@ -3909,14 +3933,31 @@ function removeForcedRecipe(id) {
     updateGenerateBtn();
 }
 
+const FORCED_DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
 function renderForcedChips() {
     const container = document.getElementById('chatForcedChips');
     if (!container) return;
-    container.innerHTML = forcedRecipes.map(r =>
-        `<span class="chat-forced-chip">${r.name}<button class="chip-remove" data-id="${r.id}">×</button></span>`
-    ).join('');
+
+    container.innerHTML = forcedRecipes.map(r => {
+        const dayOpts = FORCED_DAYS.map(d =>
+            `<option value="${d}" ${r.day === d ? 'selected' : ''}>${d || 'Peu importe'}</option>`
+        ).join('');
+        return `<span class="chat-forced-chip" data-id="${r.id}">
+            <span class="chip-name">${r.name}</span>
+            <select class="chip-day-select" data-id="${r.id}" title="Jour préféré">${dayOpts}</select>
+            <button class="chip-remove" data-id="${r.id}">×</button>
+        </span>`;
+    }).join('');
+
     container.querySelectorAll('.chip-remove').forEach(btn => {
         btn.addEventListener('click', () => removeForcedRecipe(btn.dataset.id));
+    });
+    container.querySelectorAll('.chip-day-select').forEach(sel => {
+        sel.addEventListener('change', () => {
+            const recipe = forcedRecipes.find(r => r.id === sel.dataset.id);
+            if (recipe) recipe.day = sel.value;
+        });
     });
 }
 
@@ -4180,9 +4221,14 @@ function openModProposalPopup() {
 function closeModProposalPopup() {
     document.getElementById('modProposalOverlay').style.display = 'none';
     refreshProposalDaysDisplay();
-    // Scroll vers le planning mis à jour
-    const list = document.getElementById('proposalDaysList');
-    if (list) list.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    // Scroll vers le planning mis à jour dans le panel de chat
+    setTimeout(() => {
+        const messages = document.getElementById('chatMessages');
+        const list = document.getElementById('proposalDaysList');
+        if (messages && list) {
+            messages.scrollTop = list.offsetTop - 20;
+        }
+    }, 60);
 }
 
 function switchModProposalTab(tab) {
@@ -4540,6 +4586,11 @@ document.getElementById('chatMessages').addEventListener('click', e => {
         });
         return;
     }
+    // Bouton recettes à inclure
+    if (e.target.id === 'chatAddRecipesBtn' || e.target.closest('#chatAddRecipesBtn')) {
+        showRecipePickerOverlay();
+        return;
+    }
     // Bouton générer — force create pour court-circuiter le Keyword Router
     if (e.target.id === 'chatGenerateBtn') {
         generatePlanning('create');
@@ -4586,7 +4637,17 @@ document.getElementById('chatNewBtn').addEventListener('click', resetChat);
 
 // Popup modifier planning proposé
 document.getElementById('closeModProposalBtn').addEventListener('click', closeModProposalPopup);
-document.getElementById('applyModProposalBtn').addEventListener('click', closeModProposalPopup);
+document.getElementById('applyModProposalBtn').addEventListener('click', async () => {
+    const activeTab = document.querySelector('.mod-tab-btn.active')?.dataset.tab;
+    const iaInput = document.getElementById('iaModInput');
+    if (activeTab === 'ai' && iaInput?.value.trim()) {
+        // Envoie la modification IA puis ferme
+        await sendModifyProposalIA();
+        closeModProposalPopup();
+    } else {
+        closeModProposalPopup();
+    }
+});
 document.querySelectorAll('.mod-tab-btn').forEach(btn =>
     btn.addEventListener('click', () => switchModProposalTab(btn.dataset.tab))
 );
@@ -4596,16 +4657,8 @@ document.getElementById('modProposalOverlay').addEventListener('click', e => {
 });
 document.getElementById('chatSendBtn').addEventListener('click', sendChatMessage);
 
-document.getElementById('chatPinBtn').addEventListener('click', () => {
-    const bar = document.getElementById('chatContextBar');
-    const isVisible = bar.style.display !== 'none';
-    bar.style.display = isVisible ? 'none' : 'block';
-    document.getElementById('chatPinBtn').classList.toggle('active', !isVisible);
-    if (!isVisible) {
-        initForcedRecipesSelector();
-        document.getElementById('chatRecipeSearch')?.focus();
-    }
-});
+// 📌 Pin button = ouvre le recipe picker overlay
+document.getElementById('chatPinBtn').addEventListener('click', showRecipePickerOverlay);
 
 document.getElementById('chatInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
